@@ -1,0 +1,51 @@
+cabal-version:      3.4
+name:               obloxious
+version:            0.1.0.0
+synopsis:           A language server implementation for the toy language lox
+-- description:
+homepage:           https://github.com/sgillespie/obloxious
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Sean D Gillespie
+maintainer:         sean@mistersg.net
+-- copyright:
+category:           Development
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  MyLib
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base ^>=4.18.2.1
+    hs-source-dirs:   src
+    default-language: GHC2021
+
+executable obloxious
+    import:           warnings
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:
+        base ^>=4.18.2.1,
+        obloxious
+
+    hs-source-dirs:   app
+    default-language: GHC2021
+
+test-suite obloxious-test
+    import:           warnings
+    default-language: GHC2021
+    -- other-modules:
+    -- other-extensions:
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:
+        base ^>=4.18.2.1,
+        obloxious
