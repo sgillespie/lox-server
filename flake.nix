@@ -21,6 +21,7 @@
 
           shell.tools = {
             cabal = {};
+            cabal-gild = {};
             fourmolu = {};
             hlint = {};
             haskell-language-server = {};
