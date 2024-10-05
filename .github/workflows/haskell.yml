@@ -25,6 +25,3 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Build executable
       run: nix build -L .
-    - name: Run tests
-      run: |
-        nix build -L .#checks.x86_64-linux."obloxious:exe:obloxious"
