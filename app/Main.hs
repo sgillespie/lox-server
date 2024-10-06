@@ -1,8 +1,6 @@
 module Main where
 
-import MyLib qualified (someFunc)
+import Development.Lox.Server (runServer)
 
 main :: IO ()
-main = do
-  putStrLn "Hello, Haskell!"
-  MyLib.someFunc
+main = runServer

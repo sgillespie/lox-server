@@ -21,9 +21,18 @@ common warnings
     base hiding (Prelude),
     relude (Relude as Prelude),
 
+  default-extensions:
+    OverloadedStrings
+
 library
   import: warnings
-  exposed-modules: MyLib
+  exposed-modules:
+    Development.Lox.Server
+
+  build-depends:
+    lsp,
+    lsp-types,
+
   hs-source-dirs: src
   default-language: GHC2021
 
