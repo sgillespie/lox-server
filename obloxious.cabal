@@ -22,16 +22,23 @@ common warnings
     relude (Relude as Prelude),
 
   default-extensions:
-    OverloadedStrings
+    DataKinds,
+    DuplicateRecordFields,
+    OverloadedStrings,
+    DerivingStrategies
 
 library
   import: warnings
   exposed-modules:
     Development.Lox.Server
+    Development.Lox.Server.Parser
+    Development.Lox.Server.Types
 
   build-depends:
     lsp,
     lsp-types,
+    microlens,
+    prettyprinter
 
   hs-source-dirs: src
   default-language: GHC2021
