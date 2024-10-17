@@ -4,13 +4,15 @@ module Development.Lox.Server
   ( runServer,
   ) where
 
-import Development.Lox.Server.Parser (parseLoxFile)
+import Development.Lox.Server.Parser (parseLox)
 
+import Development.Lox.Server.Types
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as Lens
 import Language.LSP.Protocol.Message (SMethod (..))
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server qualified as LSP
+import Language.LSP.VFS qualified as VFS
 import Lens.Micro
 
 runServer :: IO ()
@@ -47,30 +49,37 @@ handleDiagnostics msg = do
   let doc = msg ^. Lens.params . Lens.textDocument
       uri' = doc ^. Lens.uri
       version' = doc ^. Lens.version
-      -- TODO: Use VFS
-      file = LSP.uriToFilePath uri'
 
-  diagnostics <-
-    case file of
-      Just file' -> do
-        loxModule <- liftIO (parseLoxFile file')
-        pure [mkDiagnostic (show loxModule)]
-      Nothing -> pure []
+  parseResult <- parseLoxSource uri'
+
+  let diagnostics =
+        either
+          (\err -> [mkDiagnostic (show err) LSP.DiagnosticSeverity_Error])
+          (\prog -> [mkDiagnostic (show prog) LSP.DiagnosticSeverity_Information])
+          parseResult
 
   LSP.publishDiagnostics
     100
     (LSP.toNormalizedUri uri')
     (Just version')
     (partitionBySource diagnostics)
+  where
+    getVirtualFile uri' = do
+      res <- LSP.getVirtualFile (LSP.toNormalizedUri uri')
+      pure (maybeToRight LoxFileNotFound res)
 
-mkDiagnostic :: Text -> LSP.Diagnostic
-mkDiagnostic message =
+    parseLoxSource uri' = runExceptT $ do
+      f <- ExceptT $ getVirtualFile uri'
+      hoistEither $ parseLox (VFS.virtualFileText f)
+
+mkDiagnostic :: Text -> LSP.DiagnosticSeverity -> LSP.Diagnostic
+mkDiagnostic message severity =
   LSP.Diagnostic
     { LSP._range = LSP.Range (LSP.Position 0 1) (LSP.Position 0 5),
-      LSP._severity = Just LSP.DiagnosticSeverity_Warning,
+      LSP._severity = Just severity,
       LSP._code = Nothing,
       LSP._codeDescription = Nothing,
-      LSP._source = Just "sean",
+      LSP._source = Just "lox",
       LSP._message = message,
       LSP._tags = Nothing,
       LSP._relatedInformation = Nothing,

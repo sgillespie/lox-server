@@ -16,6 +16,7 @@ newtype LoxExpr = LoxString Text
 
 data LoxError
   = LoxParsingError
+  | LoxFileNotFound
   deriving stock (Eq, Show)
 
 instance Exception LoxError
