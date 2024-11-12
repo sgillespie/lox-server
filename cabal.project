@@ -1,6 +1,10 @@
 packages: ./*.cabal
 
-index-state: 2024-10-05T01:00:34Z
+index-state: 2024-11-12T01:48:51Z
 
 tests: True
 test-show-details: direct
+
+constraints:
+  -- Required for sydtest
+  path-io >= 1.4.0

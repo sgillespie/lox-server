@@ -10,6 +10,8 @@ maintainer: sean@mistersg.net
 category: Development
 build-type: Simple
 extra-doc-files: CHANGELOG.md
+data-files:
+  test/data/*
 
 common warnings
   ghc-options: -Wall
@@ -54,9 +56,19 @@ executable obloxious
 
 test-suite obloxious-test
   import: warnings
-  default-language: GHC2021
   type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+    Development.Server.ParserSpec
+    Paths_obloxious
   hs-source-dirs: test
-  main-is: Main.hs
+  default-language: GHC2021
+  build-tool:
+    sydtest-discover
   build-depends:
-    obloxious
+    obloxious,
+    sydtest
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
