@@ -12,11 +12,7 @@ spec = do
     it "hello.lox" $ do
       loxFile <- getDataFileName "test/data/hello.lox"
       prog <- parseLoxFile loxFile
-      prog
-        `shouldBe` LoxProgram
-          [ PrintStmt
-              (LoxString "Hello, world!")
-          ]
+      prog `shouldBe` helloWorldProg
 
   describe "parseLox" $
     it "hello.lox" $ do
@@ -24,11 +20,11 @@ spec = do
       loxText <- readFileBS loxFile
 
       let prog = parseLox (decodeUtf8 loxText)
-      prog
-        `shouldBeRight` LoxProgram
-          [ PrintStmt
-              (LoxString "Hello, world!")
-          ]
+      prog `shouldBe` Right helloWorldProg
 
-shouldBeRight :: (Eq a, Eq b, Show a, Show b) => Either a b -> b -> IO ()
-shouldBeRight actual = (actual `shouldBe`) . Right
+helloWorldProg :: LoxProgram
+helloWorldProg =
+  LoxProgram
+    [ PrintStmt
+        (LoxString "Hello, world!")
+    ]
