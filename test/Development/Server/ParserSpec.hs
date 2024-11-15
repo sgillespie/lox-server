@@ -23,7 +23,7 @@ spec = do
       loxFile <- getDataFileName "test/data/hello.lox"
       loxText <- readFileBS loxFile
 
-      let prog = parseLox (decodeUtf8 loxText)
+      let prog = parseLox Nothing (decodeUtf8 loxText)
       prog `shouldBe` Right helloWorldProg
 
 helloWorldProg :: LoxProgram

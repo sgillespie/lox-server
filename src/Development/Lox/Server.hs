@@ -54,7 +54,7 @@ handleDiagnostics msg = do
 
   let diagnostics =
         either
-          (\err -> [mkDiagnostic (show err) LSP.DiagnosticSeverity_Error])
+          (\err -> [mkDiagnostic (displayLoxError err) LSP.DiagnosticSeverity_Error])
           (\prog -> [mkDiagnostic (show prog) LSP.DiagnosticSeverity_Information])
           parseResult
 
@@ -69,8 +69,10 @@ handleDiagnostics msg = do
       pure (maybeToRight LoxFileNotFound res)
 
     parseLoxSource uri' = runExceptT $ do
+      let filePath = LSP.uriToFilePath uri'
+
       f <- ExceptT $ getVirtualFile uri'
-      hoistEither $ parseLox (VFS.virtualFileText f)
+      hoistEither $ parseLox filePath (VFS.virtualFileText f)
 
 mkDiagnostic :: Text -> LSP.DiagnosticSeverity -> LSP.Diagnostic
 mkDiagnostic message severity =

@@ -6,6 +6,7 @@ module Development.Lox.Server.Types
     isLoxError,
     isLoxParsingError,
     isLoxFileNotFound,
+    displayLoxError,
   ) where
 
 newtype LoxProgram = LoxProgram [LoxStmt]
@@ -21,6 +22,10 @@ data LoxError
   = LoxParsingError Text
   | LoxFileNotFound
   deriving stock (Eq, Ord, Show)
+
+displayLoxError :: LoxError -> Text
+displayLoxError (LoxParsingError err) = err
+displayLoxError LoxFileNotFound = "File not found"
 
 isLoxError :: LoxError -> Bool
 isLoxError = const True

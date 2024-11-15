@@ -17,14 +17,11 @@ type Parser = Parsec Void Text
 parseLoxFile :: FilePath -> IO Types.LoxProgram
 parseLoxFile file = do
   contents <- readFileBS file
-  let res = parseLox' (Just file) (decodeUtf8 contents)
+  let res = parseLox (Just file) (decodeUtf8 contents)
   either throwIO pure res
 
-parseLox :: Text -> Either Types.LoxError Types.LoxProgram
-parseLox = parseLox' Nothing
-
-parseLox' :: Maybe FilePath -> Text -> Either Types.LoxError Types.LoxProgram
-parseLox' path input =
+parseLox :: Maybe FilePath -> Text -> Either Types.LoxError Types.LoxProgram
+parseLox path input =
   first
     (Types.LoxParsingError . toText . errorBundlePretty)
     (runParser parseProgram file input)
