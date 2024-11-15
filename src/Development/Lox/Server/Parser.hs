@@ -33,7 +33,7 @@ parseLox' path input =
 
 parseProgram :: Parser Types.LoxProgram
 parseProgram =
-  Types.LoxProgram <$> (space *> parseStmts)
+  Types.LoxProgram <$> (space *> parseStmts <* eof)
 
 parseStmts :: Parser [Types.LoxStmt]
 parseStmts = many parseStmt

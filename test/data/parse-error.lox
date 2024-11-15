@@ -1,0 +1,2 @@
+// A simple Lox program with a parse error
+pring "Hello, World!";

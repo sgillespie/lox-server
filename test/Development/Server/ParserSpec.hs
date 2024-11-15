@@ -8,11 +8,15 @@ import Test.Syd
 
 spec :: Spec
 spec = do
-  describe "parseLoxFile" $
+  describe "parseLoxFile" $ do
     it "hello.lox" $ do
       loxFile <- getDataFileName "test/data/hello.lox"
       prog <- parseLoxFile loxFile
       prog `shouldBe` helloWorldProg
+
+    it "parse-error.lox" $ do
+      loxFile <- getDataFileName "test/data/parse-error.lox"
+      parseLoxFile loxFile `shouldThrow` isLoxParsingError
 
   describe "parseLox" $
     it "hello.lox" $ do
