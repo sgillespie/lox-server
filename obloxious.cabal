@@ -37,9 +37,11 @@ library
     Development.Lox.Server.Types
 
   build-depends:
+    filepath,
     lsp,
     lsp-types,
     microlens,
+    megaparsec,
     prettyprinter
 
   hs-source-dirs: src
@@ -63,8 +65,8 @@ test-suite obloxious-test
     Paths_obloxious
   hs-source-dirs: test
   default-language: GHC2021
-  build-tool:
-    sydtest-discover
+  build-tool-depends:
+    sydtest-discover:sydtest-discover
   build-depends:
     obloxious,
     sydtest

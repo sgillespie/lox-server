@@ -15,8 +15,8 @@ newtype LoxExpr = LoxString Text
   deriving stock (Eq, Show)
 
 data LoxError
-  = LoxParsingError
+  = LoxParsingError Text
   | LoxFileNotFound
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Ord, Show)
 
 instance Exception LoxError
