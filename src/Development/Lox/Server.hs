@@ -54,9 +54,11 @@ handleDiagnostics msg = do
 
   let diagnostics =
         either
-          (\err -> [mkDiagnostic (displayLoxError err) LSP.DiagnosticSeverity_Error])
-          (\prog -> [mkDiagnostic (show prog) LSP.DiagnosticSeverity_Information])
+          (\err -> [mkErrDiagnostic err])
+          (\prog -> [mkDiagnostic defaultRange (show prog) LSP.DiagnosticSeverity_Information])
           parseResult
+
+      defaultRange = LSP.Range (LSP.Position 0 1) (LSP.Position 0 5)
 
   LSP.publishDiagnostics
     100
@@ -74,10 +76,18 @@ handleDiagnostics msg = do
       f <- ExceptT $ getVirtualFile uri'
       hoistEither $ parseLox filePath (VFS.virtualFileText f)
 
-mkDiagnostic :: Text -> LSP.DiagnosticSeverity -> LSP.Diagnostic
-mkDiagnostic message severity =
+mkErrDiagnostic :: LoxError -> LSP.Diagnostic
+mkErrDiagnostic err =
+  mkDiagnostic range msg LSP.DiagnosticSeverity_Error
+  where
+    range = fromMaybe defaultRange (parsingErrorRange err)
+    msg = displayLoxError err
+    defaultRange = LSP.Range (LSP.Position 0 0) (LSP.Position maxBound maxBound)
+
+mkDiagnostic :: LSP.Range -> Text -> LSP.DiagnosticSeverity -> LSP.Diagnostic
+mkDiagnostic range message severity =
   LSP.Diagnostic
-    { LSP._range = LSP.Range (LSP.Position 0 1) (LSP.Position 0 5),
+    { LSP._range = range,
       LSP._severity = Just severity,
       LSP._code = Nothing,
       LSP._codeDescription = Nothing,

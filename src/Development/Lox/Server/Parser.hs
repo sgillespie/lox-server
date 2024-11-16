@@ -23,7 +23,7 @@ parseLoxFile file = do
 parseLox :: Maybe FilePath -> Text -> Either Types.LoxError Types.LoxProgram
 parseLox path input =
   first
-    (Types.LoxParsingError . toText . errorBundlePretty)
+    Types.mkLoxParsingError
     (runParser parseProgram file input)
   where
     file = maybe "<inline>" takeFileName path
