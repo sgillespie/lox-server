@@ -13,7 +13,7 @@ module Development.Lox.Server.Types
     displayLoxError,
   ) where
 
-import Language.LSP.Protocol.Types (Position (..), Range (..))
+import Language.LSP.Protocol.Types (Position (..), Range (..), UInt)
 import Text.Megaparsec qualified as Parsec
 
 newtype LoxProgram = LoxProgram [LoxStmt]
@@ -40,20 +40,18 @@ mkLoxParsingError err =
   where
     toErrText = toText . Parsec.errorBundlePretty
 
-mkRange :: Parsec.ParseErrorBundle s e -> Range
-mkRange (Parsec.ParseErrorBundle{bundlePosState}) =
-  Range
-    (Position line (col - 1)) -- Parser position state
-    (Position line maxBound) -- Until the end of the line
+mkRange :: Parsec.ParseErrorBundle Text e -> Range
+mkRange (Parsec.ParseErrorBundle{bundleErrors, bundlePosState}) =
+  let offset = Parsec.errorOffset (head bundleErrors)
+      newPosState = Parsec.reachOffsetNoLine offset bundlePosState
+      line = fromPosState Parsec.sourceLine newPosState
+      col = fromPosState Parsec.sourceColumn newPosState
+  in Range
+      (Position line (col - 1)) -- Parser position state
+      (Position line maxBound) -- Until the end of the line
   where
-    line = fromPosState Parsec.sourceLine
-    col = fromPosState Parsec.sourceColumn
-    fromPosState f =
-      fromIntegral
-        . Parsec.unPos
-        . f
-        . Parsec.pstateSourcePos
-        $ bundlePosState
+    fromPosState :: (Parsec.SourcePos -> Parsec.Pos) -> Parsec.PosState s -> UInt
+    fromPosState f = fromIntegral . Parsec.unPos . f . Parsec.pstateSourcePos
 
 parsingErrorRange :: LoxError -> Maybe Range
 parsingErrorRange (LoxParsingError range _) = Just range
