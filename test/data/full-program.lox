@@ -1,0 +1,11 @@
+// Comment
+print "Hello, world!";
+
+// Expression statements
+"Hello, world!";
+123.1112031362132132132132;
+1;
+a;
+abc123;
+("Hello World!");
+super.x;

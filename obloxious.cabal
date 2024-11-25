@@ -22,6 +22,7 @@ common warnings
   mixins:
     base hiding (Prelude),
     relude (Relude as Prelude),
+    relude
 
   default-extensions:
     DataKinds,

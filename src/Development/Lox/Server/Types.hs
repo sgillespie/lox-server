@@ -19,10 +19,15 @@ import Text.Megaparsec qualified as Parsec
 newtype LoxProgram = LoxProgram [LoxStmt]
   deriving stock (Eq, Show)
 
-newtype LoxStmt = PrintStmt LoxExpr
+data LoxStmt
+  = PrintStmt LoxExpr
+  | ExprStmt LoxExpr
   deriving stock (Eq, Show)
 
-newtype LoxExpr = LoxString Text
+data LoxExpr
+  = LoxString Text
+  | LoxNumber Double
+  | LoxVar Text
   deriving stock (Eq, Show)
 
 data LoxError
@@ -47,8 +52,8 @@ mkRange (Parsec.ParseErrorBundle{bundleErrors, bundlePosState}) =
       line = fromPosState Parsec.sourceLine newPosState
       col = fromPosState Parsec.sourceColumn newPosState
   in Range
-      (Position line (col - 1)) -- Parser position state
-      (Position line maxBound) -- Until the end of the line
+      (Position (line - 1) (col - 1)) -- Parser position state
+      (Position (line - 1) maxBound) -- Until the end of the line
   where
     fromPosState :: (Parsec.SourcePos -> Parsec.Pos) -> Parsec.PosState s -> UInt
     fromPosState f = fromIntegral . Parsec.unPos . f . Parsec.pstateSourcePos
