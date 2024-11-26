@@ -11,7 +11,7 @@ import System.FilePath (takeFileName)
 import Text.Megaparsec
 import Text.Megaparsec.Char qualified as Char
 import Text.Megaparsec.Char.Lexer qualified as Lex
-import Prelude hiding (many, some)
+import Prelude hiding (get, many, some)
 
 type Parser = Parsec Void Text
 
@@ -50,7 +50,28 @@ parseExprStmt = Types.ExprStmt <$> parseStmt'
     parseStmt' = parseExpr <* symbol ";"
 
 parseExpr :: Parser Types.LoxExpr
-parseExpr = primary
+parseExpr = unary
+
+unary :: Parser Types.LoxExpr
+unary =
+  (Types.LoxUnary <$> exclaim <*> unary)
+    <|> (Types.LoxUnary <$> dash <*> unary)
+    <|> call
+  where
+    exclaim = symbol "!" $> Types.Exclamation
+    dash = symbol "-" $> Types.Dash
+
+call :: Parser Types.LoxExpr
+call =
+  try funCall
+    <|> try get
+    <|> primary
+
+funCall :: Parser Types.LoxExpr
+funCall = Types.LoxCall <$> primary <*> parens (commaSep parseExpr)
+
+get :: Parser Types.LoxExpr
+get = Types.LoxGet <$> primary <*> (symbol "." *> identifier)
 
 primary :: Parser Types.LoxExpr
 primary =
@@ -58,11 +79,11 @@ primary =
     <|> parens primary
     <|> (lexeme string <?> "string")
     <|> (lexeme number <?> "number")
-    <|> (lexeme identifier <?> "variable")
+    <|> (lexeme var <?> "variable")
 
 superExpr :: Parser Types.LoxExpr
 superExpr =
-  symbol "super" *> symbol "." *> identifier
+  symbol "super" *> symbol "." *> var
 
 string :: Parser Types.LoxExpr
 string = Types.LoxString . toText <$> betweenQuotes
@@ -79,12 +100,18 @@ number =
     mkNumber intPart Nothing = Types.LoxNumber $ read intPart
     mkNumber intPart (Just decPart) = Types.LoxNumber $ read $ intPart <> "." <> decPart
 
-identifier :: Parser Types.LoxExpr
+var :: Parser Types.LoxExpr
+var = Types.LoxVar <$> identifier
+
+identifier :: Parser Text
 identifier =
   mkVar <$> Char.letterChar <*> many Char.alphaNumChar
   where
-    mkVar :: Char -> [Char] -> Types.LoxExpr
-    mkVar c cs = Types.LoxVar $ toText (c : cs)
+    mkVar :: Char -> [Char] -> Text
+    mkVar c cs = toText (c : cs)
+
+commaSep :: Parser a -> Parser [a]
+commaSep = (`sepBy` symbol ",")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")

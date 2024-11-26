@@ -18,8 +18,8 @@ spec = do
       loxFile <- getDataFileName "test/data/parse-error.lox"
       parseLoxFile loxFile `shouldThrow` isLoxParsingError
 
-    it "full-program.lox" $ do
-      loxFile <- getDataFileName "test/data/full-program.lox"
+    it "expressions.lox" $ do
+      loxFile <- getDataFileName "test/data/expressions.lox"
       _ <- parseLoxFile loxFile
       -- If we got this far it succeeded
       pure ()

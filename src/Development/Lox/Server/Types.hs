@@ -3,6 +3,7 @@ module Development.Lox.Server.Types
     LoxStmt (..),
     LoxExpr (..),
     LoxError (..),
+    LoxUnaryOp (..),
     Range (..),
     Position (..),
     mkLoxParsingError,
@@ -28,7 +29,15 @@ data LoxExpr
   = LoxString Text
   | LoxNumber Double
   | LoxVar Text
+  | LoxCall LoxExpr [LoxExpr]
+  | LoxGet LoxExpr Text
+  | LoxUnary LoxUnaryOp LoxExpr
   deriving stock (Eq, Show)
+
+data LoxUnaryOp
+  = Exclamation
+  | Dash
+  deriving (Eq, Show)
 
 data LoxError
   = LoxParsingError Range Text
