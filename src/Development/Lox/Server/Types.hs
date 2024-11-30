@@ -4,6 +4,7 @@ module Development.Lox.Server.Types
     LoxExpr (..),
     LoxError (..),
     LoxUnaryOp (..),
+    LoxBinaryOp (..),
     Range (..),
     Position (..),
     mkLoxParsingError,
@@ -32,12 +33,30 @@ data LoxExpr
   | LoxCall LoxExpr [LoxExpr]
   | LoxGet LoxExpr Text
   | LoxUnary LoxUnaryOp LoxExpr
+  | LoxBinary LoxBinaryOp LoxExpr LoxExpr
+  | LoxAssign Text LoxExpr
+  | LoxSet LoxExpr Text LoxExpr
   deriving stock (Eq, Show)
 
 data LoxUnaryOp
   = Exclamation
   | Dash
   deriving (Eq, Show)
+
+data LoxBinaryOp
+  = Mul
+  | Div
+  | Add
+  | Sub
+  | Greater
+  | GreaterEq
+  | Less
+  | LessEq
+  | Eq
+  | NotEq
+  | LogicalAnd
+  | LogicalOr
+  deriving (Eq, Ord, Show)
 
 data LoxError
   = LoxParsingError Range Text

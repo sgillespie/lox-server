@@ -11,7 +11,7 @@ import System.FilePath (takeFileName)
 import Text.Megaparsec
 import Text.Megaparsec.Char qualified as Char
 import Text.Megaparsec.Char.Lexer qualified as Lex
-import Prelude hiding (get, many, some)
+import Prelude hiding (div, get, many, some)
 
 type Parser = Parsec Void Text
 
@@ -50,33 +50,91 @@ parseExprStmt = Types.ExprStmt <$> parseStmt'
     parseStmt' = parseExpr <* symbol ";"
 
 parseExpr :: Parser Types.LoxExpr
-parseExpr = unary
+parseExpr = assignment
+
+assignment :: Parser Types.LoxExpr
+assignment =
+  try (uncurry Types.LoxSet <$> get' <*> (symbol "=" *> logicalOr'))
+    <|> try (Types.LoxAssign <$> identifier <*> (symbol "=" *> logicalOr'))
+    <|> logicalOr'
+
+logicalOr' :: Parser Types.LoxExpr
+logicalOr' = binary logicalAnd' logicalOr logicalOr'
+
+binary
+  :: Parser Types.LoxExpr
+  -> Parser Types.LoxBinaryOp
+  -> Parser Types.LoxExpr
+  -> Parser Types.LoxExpr
+binary left op right = do
+  left' <- left
+
+  binOp <- optional $ do
+    op' <- op
+    right' <- right
+    pure (op', right')
+
+  case binOp of
+    Just (op', right') -> pure (mkBinary left' op' right')
+    Nothing -> pure left'
+
+logicalAnd' :: Parser Types.LoxExpr
+logicalAnd' = binary equality logicalAnd logicalAnd'
+
+equality :: Parser Types.LoxExpr
+equality = binary comparison eqOp equality
+  where
+    eqOp = eq <|> notEq
+
+comparison :: Parser Types.LoxExpr
+comparison = binary term cmpOp comparison
+  where
+    cmpOp = greaterEq <|> greater <|> lessEq <|> less
+
+term :: Parser Types.LoxExpr
+term = binary factor termOp term
+  where
+    termOp = add <|> sub
+
+factor :: Parser Types.LoxExpr
+factor = binary unary factorOp factor
+  where
+    factorOp :: Parser Types.LoxBinaryOp
+    factorOp = mul <|> div
+
+mkBinary
+  :: Types.LoxExpr
+  -> Types.LoxBinaryOp
+  -> Types.LoxExpr
+  -> Types.LoxExpr
+mkBinary =
+  flip Types.LoxBinary
 
 unary :: Parser Types.LoxExpr
 unary =
-  (Types.LoxUnary <$> exclaim <*> unary)
+  (Types.LoxUnary <$> exclamation <*> unary)
     <|> (Types.LoxUnary <$> dash <*> unary)
     <|> call
-  where
-    exclaim = symbol "!" $> Types.Exclamation
-    dash = symbol "-" $> Types.Dash
 
 call :: Parser Types.LoxExpr
 call =
-  try funCall
-    <|> try get
+  try get
+    <|> try funCall
     <|> primary
 
 funCall :: Parser Types.LoxExpr
 funCall = Types.LoxCall <$> primary <*> parens (commaSep parseExpr)
 
 get :: Parser Types.LoxExpr
-get = Types.LoxGet <$> primary <*> (symbol "." *> identifier)
+get = uncurry Types.LoxGet <$> get'
+
+get' :: Parser (Types.LoxExpr, Text)
+get' = (,) <$> primary <*> (symbol "." *> identifier)
 
 primary :: Parser Types.LoxExpr
 primary =
   superExpr
-    <|> parens primary
+    <|> parens parseExpr
     <|> (lexeme string <?> "string")
     <|> (lexeme number <?> "number")
     <|> (lexeme var <?> "variable")
@@ -103,9 +161,51 @@ number =
 var :: Parser Types.LoxExpr
 var = Types.LoxVar <$> identifier
 
+mul :: Parser Types.LoxBinaryOp
+mul = symbol "*" $> Types.Mul
+
+div :: Parser Types.LoxBinaryOp
+div = symbol "/" $> Types.Div
+
+add :: Parser Types.LoxBinaryOp
+add = symbol "+" $> Types.Add
+
+sub :: Parser Types.LoxBinaryOp
+sub = symbol "-" $> Types.Sub
+
+greater :: Parser Types.LoxBinaryOp
+greater = symbol ">" $> Types.Greater
+
+greaterEq :: Parser Types.LoxBinaryOp
+greaterEq = symbol ">=" $> Types.GreaterEq
+
+less :: Parser Types.LoxBinaryOp
+less = symbol "<" $> Types.Less
+
+lessEq :: Parser Types.LoxBinaryOp
+lessEq = symbol "<=" $> Types.LessEq
+
+eq :: Parser Types.LoxBinaryOp
+eq = symbol "==" $> Types.Eq
+
+notEq :: Parser Types.LoxBinaryOp
+notEq = symbol "!=" $> Types.NotEq
+
+logicalAnd :: Parser Types.LoxBinaryOp
+logicalAnd = symbol "&&" $> Types.LogicalAnd
+
+logicalOr :: Parser Types.LoxBinaryOp
+logicalOr = symbol "||" $> Types.LogicalOr
+
+exclamation :: Parser Types.LoxUnaryOp
+exclamation = symbol "!" $> Types.Exclamation
+
+dash :: Parser Types.LoxUnaryOp
+dash = symbol "-" $> Types.Dash
+
 identifier :: Parser Text
 identifier =
-  mkVar <$> Char.letterChar <*> many Char.alphaNumChar
+  lexeme $ mkVar <$> Char.letterChar <*> many Char.alphaNumChar
   where
     mkVar :: Char -> [Char] -> Text
     mkVar c cs = toText (c : cs)
