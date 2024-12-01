@@ -1,0 +1,24 @@
+// Variables
+var a = "Hello";
+var b;
+
+{
+  var a;
+  var c = "Bar";
+}
+
+// Functions
+fun f() {
+  return "Hello, World!";
+}
+
+fun id(a) {
+  return a;
+}
+
+// classes
+class MyCls {
+}
+
+class MyCls2 < MyCls {
+}

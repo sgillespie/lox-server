@@ -31,6 +31,12 @@ if (a) {
  b();
 }
 
+// While loops
 while (true) {
   print "Forever";
+}
+
+// For loops
+for (var i = 0; i < 10; i = i + 1) {
+  print i;
 }

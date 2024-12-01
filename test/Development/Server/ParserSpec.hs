@@ -30,6 +30,12 @@ spec = do
       -- If we got this far it succeeded
       pure ()
 
+    it "declarations.lox" $ do
+      loxFile <- getDataFileName "test/data/declarations.lox"
+      _ <- parseLoxFile loxFile
+      -- If we got this far it succeeded
+      pure ()
+
   describe "parseLox" $
     it "hello.lox" $ do
       loxFile <- getDataFileName "test/data/hello.lox"

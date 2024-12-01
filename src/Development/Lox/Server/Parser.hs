@@ -37,7 +37,35 @@ declarations :: Parser [Types.LoxStmt]
 declarations = many declaration
 
 declaration :: Parser Types.LoxStmt
-declaration = stmt
+declaration =
+  varStmt
+    <|> functionStmt
+    <|> classStmt
+    <|> stmt
+
+varStmt :: Parser Types.LoxStmt
+varStmt =
+  Types.VarStmt
+    <$> (symbol "var" *> identifier)
+    <*> optional (symbol "=" *> expr)
+    <* symbol ";"
+
+functionStmt :: Parser Types.LoxStmt
+functionStmt = Types.FunctionStmt <$> (symbol "fun" *> function)
+
+function :: Parser Types.LoxFunction
+function =
+  Types.LoxFunction
+    <$> identifier
+    <*> parens (commaSep identifier)
+    <*> block
+
+classStmt :: Parser Types.LoxStmt
+classStmt =
+  Types.ClassStmt
+    <$> (symbol "class" *> identifier)
+    <*> optional (symbol "<" *> identifier)
+    <*> braces (many function)
 
 stmt :: Parser Types.LoxStmt
 stmt =
@@ -45,6 +73,7 @@ stmt =
     <|> returnStmt
     <|> ifStmt
     <|> whileStmt
+    <|> forStmt
     <|> exprStmt
     <|> blockStmt
 
@@ -72,15 +101,36 @@ whileStmt =
     <$> (symbol "while" *> parens expr)
     <*> stmt
 
+forStmt :: Parser Types.LoxStmt
+forStmt = do
+  void (symbol "for")
+  (init', cond, incr) <-
+    parens $ do
+      init' <- varStmt <|> exprStmt
+      cond <- optional expr <* symbol ";"
+      incr <- optional expr
+      pure (init', cond, incr)
+  body <- stmt
+
+  let cond' = fromMaybe (Types.LoxVar "true") cond
+      incrStmt = Types.ExprStmt <$> incr
+      body' =
+        case incrStmt of
+          Just incr' -> Types.BlockStmt (body : [incr'])
+          Nothing -> body
+
+  pure $ Types.BlockStmt [init', Types.WhileStmt cond' body']
+
 exprStmt :: Parser Types.LoxStmt
 exprStmt = Types.ExprStmt <$> parseStmt'
   where
     parseStmt' = expr <* symbol ";"
 
 blockStmt :: Parser Types.LoxStmt
-blockStmt =
-  Types.BlockStmt
-    <$> braces (many stmt)
+blockStmt = Types.BlockStmt <$> block
+
+block :: Parser [Types.LoxStmt]
+block = braces (many declaration)
 
 expr :: Parser Types.LoxExpr
 expr = assignment

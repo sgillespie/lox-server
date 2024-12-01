@@ -1,6 +1,7 @@
 module Development.Lox.Server.Types
   ( LoxProgram (..),
     LoxStmt (..),
+    LoxFunction (..),
     LoxExpr (..),
     LoxError (..),
     LoxUnaryOp (..),
@@ -22,12 +23,22 @@ newtype LoxProgram = LoxProgram [LoxStmt]
   deriving stock (Eq, Show)
 
 data LoxStmt
-  = PrintStmt LoxExpr
+  = VarStmt Text (Maybe LoxExpr)
+  | FunctionStmt LoxFunction
+  | ClassStmt Text (Maybe Text) [LoxFunction]
+  | PrintStmt LoxExpr
   | ReturnStmt (Maybe LoxExpr)
   | IfStmt LoxExpr LoxStmt (Maybe LoxStmt)
   | WhileStmt LoxExpr LoxStmt
   | ExprStmt LoxExpr
   | BlockStmt [LoxStmt]
+  deriving stock (Eq, Show)
+
+data LoxFunction = LoxFunction
+  { functionName :: Text,
+    functionParams :: [Text],
+    functionBody :: [LoxStmt]
+  }
   deriving stock (Eq, Show)
 
 data LoxExpr
