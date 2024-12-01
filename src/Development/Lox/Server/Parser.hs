@@ -31,26 +31,59 @@ parseLox path input =
 
 parseProgram :: Parser Types.LoxProgram
 parseProgram =
-  Types.LoxProgram <$> (space *> parseStmts <* eof)
+  Types.LoxProgram <$> (space *> declarations <* eof)
 
-parseStmts :: Parser [Types.LoxStmt]
-parseStmts = many parseStmt
+declarations :: Parser [Types.LoxStmt]
+declarations = many declaration
 
-parseStmt :: Parser Types.LoxStmt
-parseStmt = parsePrintStmt <|> parseExprStmt
+declaration :: Parser Types.LoxStmt
+declaration = stmt
 
-parsePrintStmt :: Parser Types.LoxStmt
-parsePrintStmt = Types.PrintStmt <$> parsePrintExpr
+stmt :: Parser Types.LoxStmt
+stmt =
+  printStmt
+    <|> returnStmt
+    <|> ifStmt
+    <|> whileStmt
+    <|> exprStmt
+    <|> blockStmt
+
+printStmt :: Parser Types.LoxStmt
+printStmt = Types.PrintStmt <$> parsePrintExpr
   where
-    parsePrintExpr = symbol "print" *> parseExpr <* symbol ";"
+    parsePrintExpr = symbol "print" *> expr <* symbol ";"
 
-parseExprStmt :: Parser Types.LoxStmt
-parseExprStmt = Types.ExprStmt <$> parseStmt'
+returnStmt :: Parser Types.LoxStmt
+returnStmt =
+  Types.ReturnStmt <$> parseReturnStmt
   where
-    parseStmt' = parseExpr <* symbol ";"
+    parseReturnStmt = symbol "return" *> optional expr <* symbol ";"
 
-parseExpr :: Parser Types.LoxExpr
-parseExpr = assignment
+ifStmt :: Parser Types.LoxStmt
+ifStmt =
+  Types.IfStmt
+    <$> (symbol "if" *> parens expr)
+    <*> stmt
+    <*> optional (symbol "else" *> stmt)
+
+whileStmt :: Parser Types.LoxStmt
+whileStmt =
+  Types.WhileStmt
+    <$> (symbol "while" *> parens expr)
+    <*> stmt
+
+exprStmt :: Parser Types.LoxStmt
+exprStmt = Types.ExprStmt <$> parseStmt'
+  where
+    parseStmt' = expr <* symbol ";"
+
+blockStmt :: Parser Types.LoxStmt
+blockStmt =
+  Types.BlockStmt
+    <$> braces (many stmt)
+
+expr :: Parser Types.LoxExpr
+expr = assignment
 
 assignment :: Parser Types.LoxExpr
 assignment =
@@ -123,7 +156,7 @@ call =
     <|> primary
 
 funCall :: Parser Types.LoxExpr
-funCall = Types.LoxCall <$> primary <*> parens (commaSep parseExpr)
+funCall = Types.LoxCall <$> primary <*> parens (commaSep expr)
 
 get :: Parser Types.LoxExpr
 get = uncurry Types.LoxGet <$> get'
@@ -134,7 +167,7 @@ get' = (,) <$> primary <*> (symbol "." *> identifier)
 primary :: Parser Types.LoxExpr
 primary =
   superExpr
-    <|> parens parseExpr
+    <|> parens expr
     <|> (lexeme string <?> "string")
     <|> (lexeme number <?> "number")
     <|> (lexeme var <?> "variable")
@@ -215,6 +248,9 @@ commaSep = (`sepBy` symbol ",")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
+
+braces :: Parser a -> Parser a
+braces = between (symbol "{") (symbol "}")
 
 space :: Parser ()
 space = Lex.space Char.space1 (Lex.skipLineComment "//") empty

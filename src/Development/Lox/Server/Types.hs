@@ -23,7 +23,11 @@ newtype LoxProgram = LoxProgram [LoxStmt]
 
 data LoxStmt
   = PrintStmt LoxExpr
+  | ReturnStmt (Maybe LoxExpr)
+  | IfStmt LoxExpr LoxStmt (Maybe LoxStmt)
+  | WhileStmt LoxExpr LoxStmt
   | ExprStmt LoxExpr
+  | BlockStmt [LoxStmt]
   deriving stock (Eq, Show)
 
 data LoxExpr

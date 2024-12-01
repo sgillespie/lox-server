@@ -1,0 +1,36 @@
+// Print
+print "Hello, world!";
+
+// Expressions
+1 + 2;
+a();
+
+// Return
+return "Hello";
+
+// Blocks
+{
+  a();
+  print "Hello, World!";
+  1 + 2;
+}
+
+// If statements
+if (a == "Hello")
+  print a;
+
+if (a)
+  a();
+else
+  b();
+
+if (a) {
+ print "Found a!";
+ a();
+} else {
+ b();
+}
+
+while (true) {
+  print "Forever";
+}
