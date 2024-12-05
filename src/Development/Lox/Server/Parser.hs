@@ -24,17 +24,25 @@ parseLoxFile file = do
 parseLox :: Maybe FilePath -> Text -> Either Types.LoxError Types.LoxProgram
 parseLox path input =
   first
-    Types.mkLoxParsingError
+    Types.fromParseErrorBundle
     (runParser parseProgram file input)
   where
     file = maybe "<inline>" takeFileName path
 
 parseProgram :: Parser Types.LoxProgram
-parseProgram =
-  Types.LoxProgram <$> (space *> declarations <* eof)
+parseProgram = Types.LoxProgram <$> (space *> declarations <* eof)
 
 declarations :: Parser [Types.LoxStmt]
-declarations = many declaration
+declarations = catMaybes <$> many declarationWithRecovery
+
+declarationWithRecovery :: Parser (Maybe Types.LoxStmt)
+declarationWithRecovery = withRecovery onFail (Just <$> declaration)
+  where
+    onFail err = do
+      registerParseError err
+      void (takeWhileP Nothing (/= ';'))
+      void (symbol ";")
+      pure Nothing
 
 declaration :: Parser Types.LoxStmt
 declaration =

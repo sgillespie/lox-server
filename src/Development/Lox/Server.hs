@@ -1,4 +1,5 @@
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Development.Lox.Server
   ( runServer,
@@ -54,11 +55,9 @@ handleDiagnostics msg = do
 
   let diagnostics =
         either
-          (\err -> [mkErrDiagnostic err])
-          (\prog -> [mkDiagnostic defaultRange (show prog) LSP.DiagnosticSeverity_Information])
+          mkErrDiagnostics
+          (const [])
           parseResult
-
-      defaultRange = LSP.Range (LSP.Position 0 1) (LSP.Position 0 5)
 
   LSP.publishDiagnostics
     100
@@ -76,12 +75,17 @@ handleDiagnostics msg = do
       f <- ExceptT $ getVirtualFile uri'
       hoistEither $ parseLox filePath (VFS.virtualFileText f)
 
-mkErrDiagnostic :: LoxError -> LSP.Diagnostic
-mkErrDiagnostic err =
-  mkDiagnostic range msg LSP.DiagnosticSeverity_Error
+mkErrDiagnostics :: LoxError -> [LSP.Diagnostic]
+mkErrDiagnostics = \case
+  LoxParsingErrors errs ->
+    map
+      ( \(LoxParsingError range msg) ->
+          mkDiagnostic range msg LSP.DiagnosticSeverity_Error
+      )
+      errs
+  LoxFileNotFound ->
+    [mkDiagnostic defaultRange "File not found" LSP.DiagnosticSeverity_Error]
   where
-    range = fromMaybe defaultRange (parsingErrorRange err)
-    msg = displayLoxError err
     defaultRange = LSP.Range (LSP.Position 0 0) (LSP.Position maxBound maxBound)
 
 mkDiagnostic :: LSP.Range -> Text -> LSP.DiagnosticSeverity -> LSP.Diagnostic

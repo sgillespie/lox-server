@@ -4,16 +4,16 @@ module Development.Lox.Server.Types
     LoxFunction (..),
     LoxExpr (..),
     LoxError (..),
+    LoxParsingError (..),
     LoxUnaryOp (..),
     LoxBinaryOp (..),
     Range (..),
     Position (..),
-    mkLoxParsingError,
+    fromParseErrorBundle,
     parsingErrorRange,
     isLoxError,
     isLoxParsingError,
     isLoxFileNotFound,
-    displayLoxError,
   ) where
 
 import Language.LSP.Protocol.Types (Position (..), Range (..), UInt)
@@ -74,46 +74,65 @@ data LoxBinaryOp
   deriving (Eq, Ord, Show)
 
 data LoxError
-  = LoxParsingError Range Text
+  = LoxParsingErrors [LoxParsingError]
   | LoxFileNotFound
   deriving stock (Eq, Ord, Show)
 
+data LoxParsingError = LoxParsingError Range Text
+  deriving (Eq, Ord, Show)
+
 instance Exception LoxError
 
-mkLoxParsingError
+fromParseErrorBundle
   :: Parsec.ParseErrorBundle Text Void
   -> LoxError
-mkLoxParsingError err =
-  LoxParsingError (mkRange err) (toErrText err)
-  where
-    toErrText = toText . Parsec.errorBundlePretty
+fromParseErrorBundle (Parsec.ParseErrorBundle errs pos) =
+  evalState (fromParseErrors errs) pos
 
-mkRange :: Parsec.ParseErrorBundle Text e -> Range
-mkRange (Parsec.ParseErrorBundle{bundleErrors, bundlePosState}) =
-  let offset = Parsec.errorOffset (head bundleErrors)
-      newPosState = Parsec.reachOffsetNoLine offset bundlePosState
+fromParseErrors
+  :: NonEmpty (Parsec.ParseError Text Void)
+  -> State (Parsec.PosState Text) LoxError
+fromParseErrors errs =
+  LoxParsingErrors <$> mapM fromParseError (toList errs)
+
+fromParseError
+  :: Parsec.ParseError Text Void
+  -> State (Parsec.PosState Text) LoxParsingError
+fromParseError err = do
+  let errText = toText (Parsec.parseErrorTextPretty err)
+  range <- parseErrorRange err
+
+  pure (LoxParsingError range errText)
+
+parseErrorRange
+  :: Parsec.ParseError Text e
+  -> State (Parsec.PosState Text) Range
+parseErrorRange err = do
+  posState <- get
+
+  let offset = Parsec.errorOffset err
+      newPosState = Parsec.reachOffsetNoLine offset posState
       line = fromPosState Parsec.sourceLine newPosState
       col = fromPosState Parsec.sourceColumn newPosState
-  in Range
+
+  put newPosState
+
+  pure $
+    Range
       (Position (line - 1) (col - 1)) -- Parser position state
       (Position (line - 1) maxBound) -- Until the end of the line
   where
     fromPosState :: (Parsec.SourcePos -> Parsec.Pos) -> Parsec.PosState s -> UInt
     fromPosState f = fromIntegral . Parsec.unPos . f . Parsec.pstateSourcePos
 
-parsingErrorRange :: LoxError -> Maybe Range
-parsingErrorRange (LoxParsingError range _) = Just range
-parsingErrorRange _ = Nothing
-
-displayLoxError :: LoxError -> Text
-displayLoxError (LoxParsingError _ err) = err
-displayLoxError LoxFileNotFound = "File not found"
+parsingErrorRange :: LoxParsingError -> Range
+parsingErrorRange (LoxParsingError range _) = range
 
 isLoxError :: LoxError -> Bool
 isLoxError = const True
 
 isLoxParsingError :: LoxError -> Bool
-isLoxParsingError (LoxParsingError _ _) = True
+isLoxParsingError (LoxParsingErrors _) = True
 isLoxParsingError _ = False
 
 isLoxFileNotFound :: LoxError -> Bool

@@ -4,6 +4,7 @@ import Development.Lox.Server.Parser (parseLox, parseLoxFile)
 import Development.Lox.Server.Types
 import Paths_obloxious (getDataFileName)
 
+import Control.Exception (try)
 import Test.Syd
 
 spec :: Spec
@@ -35,6 +36,15 @@ spec = do
       _ <- parseLoxFile loxFile
       -- If we got this far it succeeded
       pure ()
+
+    it "multiple-errors.lox" $ do
+      loxFile <- getDataFileName "test/data/multiple-errors.lox"
+      res <- try @LoxError (parseLoxFile loxFile)
+      case res of
+        Right _ -> expectationFailure "Expected an error!"
+        Left LoxFileNotFound -> expectationFailure "Expected a parsing error!"
+        Left (LoxParsingErrors errs) ->
+          length errs `shouldBe` 2
 
   describe "parseLox" $
     it "hello.lox" $ do
