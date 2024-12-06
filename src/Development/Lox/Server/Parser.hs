@@ -6,6 +6,8 @@ module Development.Lox.Server.Parser
 import Development.Lox.Server.Types qualified as Types
 
 import Control.Exception (throwIO)
+import Control.Monad.Combinators.Expr
+import Data.Foldable (foldr1)
 import Relude.Unsafe (read)
 import System.FilePath (takeFileName)
 import Text.Megaparsec
@@ -39,9 +41,12 @@ declarationWithRecovery :: Parser (Maybe Types.LoxStmt)
 declarationWithRecovery = withRecovery onFail (Just <$> declaration)
   where
     onFail err = do
+      -- Collect all errors until we've consumed all input
       registerParseError err
-      void (takeWhileP Nothing (/= ';'))
+      -- Skip tokens until we reach the next statement
+      void $ takeWhileP Nothing (/= ';')
       void (symbol ";")
+      -- No declaration to construct
       pure Nothing
 
 declaration :: Parser Types.LoxStmt
@@ -120,6 +125,7 @@ forStmt = do
       pure (init', cond, incr)
   body <- stmt
 
+  -- Transform into a while
   let cond' = fromMaybe (Types.LoxVar "true") cond
       incrStmt = Types.ExprStmt <$> incr
       body' =
@@ -145,70 +151,36 @@ expr = assignment
 
 assignment :: Parser Types.LoxExpr
 assignment =
-  try (uncurry Types.LoxSet <$> get' <*> (symbol "=" *> logicalOr'))
-    <|> try (Types.LoxAssign <$> identifier <*> (symbol "=" *> logicalOr'))
-    <|> logicalOr'
+  try (uncurry Types.LoxSet <$> get' <*> (symbol "=" *> opExpr))
+    <|> try (Types.LoxAssign <$> identifier <*> (symbol "=" *> opExpr))
+    <|> opExpr
 
-logicalOr' :: Parser Types.LoxExpr
-logicalOr' = binary logicalAnd' logicalOr logicalOr'
-
-binary
-  :: Parser Types.LoxExpr
-  -> Parser Types.LoxBinaryOp
-  -> Parser Types.LoxExpr
-  -> Parser Types.LoxExpr
-binary left op right = do
-  left' <- left
-
-  binOp <- optional $ do
-    op' <- op
-    right' <- right
-    pure (op', right')
-
-  case binOp of
-    Just (op', right') -> pure (mkBinary left' op' right')
-    Nothing -> pure left'
-
-logicalAnd' :: Parser Types.LoxExpr
-logicalAnd' = binary equality logicalAnd logicalAnd'
-
-equality :: Parser Types.LoxExpr
-equality = binary comparison eqOp equality
+opExpr :: Parser Types.LoxExpr
+opExpr = makeExprParser term table <?> "expression"
   where
-    eqOp = eq <|> notEq
-
-comparison :: Parser Types.LoxExpr
-comparison = binary term cmpOp comparison
-  where
-    cmpOp = greaterEq <|> greater <|> lessEq <|> less
+    table =
+      [ [Prefix $ manyUnary (exclamation <|> dash)],
+        [ InfixL $ Types.LoxBinary <$> mul,
+          InfixL $ Types.LoxBinary <$> div
+        ],
+        [ InfixL $ Types.LoxBinary <$> add,
+          InfixL $ Types.LoxBinary <$> sub
+        ],
+        [ InfixL $ Types.LoxBinary <$> greaterEq,
+          InfixL $ Types.LoxBinary <$> greater,
+          InfixL $ Types.LoxBinary <$> lessEq,
+          InfixL $ Types.LoxBinary <$> less
+        ],
+        [ InfixN $ Types.LoxBinary <$> eq,
+          InfixN $ Types.LoxBinary <$> notEq
+        ],
+        [InfixL $ Types.LoxBinary <$> logicalAnd],
+        [InfixL $ Types.LoxBinary <$> logicalOr]
+      ]
+    manyUnary p = foldr1 (.) <$> some (Types.LoxUnary <$> p)
 
 term :: Parser Types.LoxExpr
-term = binary factor termOp term
-  where
-    termOp = add <|> sub
-
-factor :: Parser Types.LoxExpr
-factor = binary unary factorOp factor
-  where
-    factorOp :: Parser Types.LoxBinaryOp
-    factorOp = mul <|> div
-
-mkBinary
-  :: Types.LoxExpr
-  -> Types.LoxBinaryOp
-  -> Types.LoxExpr
-  -> Types.LoxExpr
-mkBinary =
-  flip Types.LoxBinary
-
-unary :: Parser Types.LoxExpr
-unary =
-  (Types.LoxUnary <$> exclamation <*> unary)
-    <|> (Types.LoxUnary <$> dash <*> unary)
-    <|> call
-
-call :: Parser Types.LoxExpr
-call =
+term =
   try get
     <|> try funCall
     <|> primary

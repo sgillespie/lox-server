@@ -43,6 +43,7 @@ library
     lsp-types,
     microlens,
     megaparsec,
+    parser-combinators,
     prettyprinter
 
   hs-source-dirs: src
