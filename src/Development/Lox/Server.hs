@@ -10,7 +10,7 @@ import Development.Lox.Server.Parser (parseLox)
 import Development.Lox.Server.Types
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as Lens
-import Language.LSP.Protocol.Message (SMethod (..))
+import Language.LSP.Protocol.Message qualified as Message
 import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server qualified as LSP
 import Language.LSP.VFS qualified as VFS
@@ -34,8 +34,9 @@ runServer =
 handlers :: LSP.Handlers (LSP.LspM ())
 handlers =
   mconcat
-    [ LSP.notificationHandler SMethod_TextDocumentDidOpen handleDiagnostics,
-      LSP.notificationHandler SMethod_TextDocumentDidChange handleDiagnostics
+    [ LSP.notificationHandler Message.SMethod_TextDocumentDidOpen handleDiagnostics,
+      LSP.notificationHandler Message.SMethod_TextDocumentDidChange handleDiagnostics,
+      LSP.requestHandler Message.SMethod_TextDocumentHover handleHover
     ]
 
 handleDiagnostics
@@ -64,16 +65,20 @@ handleDiagnostics msg = do
     (LSP.toNormalizedUri uri')
     (Just version')
     (partitionBySource diagnostics)
+
+parseLoxSource
+  :: LSP.Uri
+  -> LSP.LspM c (Either LoxError LoxProgram)
+parseLoxSource uri' = runExceptT $ do
+  let filePath = LSP.uriToFilePath uri'
+  virtualFile <- ExceptT getVirtualFile
+
+  hoistEither $
+    parseLox filePath (VFS.virtualFileText virtualFile)
   where
-    getVirtualFile uri' = do
+    getVirtualFile = do
       res <- LSP.getVirtualFile (LSP.toNormalizedUri uri')
       pure (maybeToRight LoxFileNotFound res)
-
-    parseLoxSource uri' = runExceptT $ do
-      let filePath = LSP.uriToFilePath uri'
-
-      f <- ExceptT $ getVirtualFile uri'
-      hoistEither $ parseLox filePath (VFS.virtualFileText f)
 
 mkErrDiagnostics :: LoxError -> [LSP.Diagnostic]
 mkErrDiagnostics = \case
@@ -101,6 +106,34 @@ mkDiagnostic range message severity =
       LSP._relatedInformation = Nothing,
       LSP._data_ = Nothing
     }
+
+type Response m =
+  Either (Message.TResponseError m) (Message.MessageResult m)
+
+handleHover
+  :: Message.TRequestMessage 'Message.Method_TextDocumentHover
+  -> (Response 'Message.Method_TextDocumentHover -> LSP.LspM c ())
+  -> LSP.LspM c ()
+handleHover req responder = do
+  let (Message.TRequestMessage _ _ _ (LSP.HoverParams doc pos _)) = req
+      uri = doc ^. Lens.uri
+
+  parseResult <- parseLoxSource uri
+
+  case parseResult of
+    Left err -> responder . Right . LSP.InL $ hoverParseFailure pos err
+    Right parsed -> responder . Right . LSP.InL $ hoverParseSuccess pos parsed
+
+hoverParseFailure :: Position -> LoxError -> LSP.Hover
+hoverParseFailure _ err =
+  LSP.Hover (LSP.InL (LSP.mkMarkdown (show err))) Nothing
+
+hoverParseSuccess :: Position -> LoxProgram -> LSP.Hover
+hoverParseSuccess pos _ =
+  -- TODO: Look up symbol at pos
+  LSP.Hover (LSP.InL hoverText) Nothing
+  where
+    hoverText = LSP.mkMarkdown $ "Hello, Sean!" <> " (" <> show pos <> ")"
 
 lspOptions :: LSP.Options
 lspOptions =
