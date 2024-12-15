@@ -1,5 +1,9 @@
 module Development.Lox.Server.Types
-  ( LoxProgram (..),
+  ( LocatedLoxProgram,
+    LocatedLoxStmt,
+    LocatedLoxFunction,
+    LocatedLoxExpr,
+    LoxProgram (..),
     LoxStmt (..),
     LoxFunction (..),
     LoxExpr (..),
@@ -19,39 +23,74 @@ module Development.Lox.Server.Types
 import Language.LSP.Protocol.Types (Position (..), Range (..), UInt)
 import Text.Megaparsec qualified as Parsec
 
-newtype LoxProgram = LoxProgram [LoxStmt]
+type LocatedLoxProgram = LoxProgram Range
+type LocatedLoxStmt = LoxStmt Range
+type LocatedLoxFunction = LoxFunction Range
+type LocatedLoxExpr = LoxExpr Range
+
+newtype LoxProgram e = LoxProgram [LoxStmt e]
   deriving stock (Eq, Show)
 
-data LoxStmt
-  = VarStmt Text (Maybe LoxExpr)
-  | FunctionStmt LoxFunction
-  | ClassStmt Text (Maybe Text) [LoxFunction]
-  | PrintStmt LoxExpr
-  | ReturnStmt (Maybe LoxExpr)
-  | IfStmt LoxExpr LoxStmt (Maybe LoxStmt)
-  | WhileStmt LoxExpr LoxStmt
-  | ExprStmt LoxExpr
-  | BlockStmt [LoxStmt]
+data LoxStmt e
+  = VarStmt e Text (Maybe (LoxExpr e))
+  | FunctionStmt e (LoxFunction e)
+  | ClassStmt e Text (Maybe Text) [LoxFunction e]
+  | PrintStmt e (LoxExpr e)
+  | ReturnStmt e (Maybe (LoxExpr e))
+  | IfStmt e (LoxExpr e) (LoxStmt e) (Maybe (LoxStmt e))
+  | WhileStmt e (LoxExpr e) (LoxStmt e)
+  | ExprStmt e (LoxExpr e)
+  | BlockStmt e [LoxStmt e]
   deriving stock (Eq, Show)
 
-data LoxFunction = LoxFunction
+instance Functor LoxStmt where
+  fmap f stmt =
+    case stmt of
+      VarStmt e txt expr -> VarStmt (f e) txt (fmap (fmap f) expr)
+      FunctionStmt e fun -> FunctionStmt (f e) (fmap f fun)
+      ClassStmt e name extends body -> ClassStmt (f e) name extends (map (fmap f) body)
+      PrintStmt e expr -> PrintStmt (f e) (fmap f expr)
+      ReturnStmt e expr -> ReturnStmt (f e) (fmap (fmap f) expr)
+      IfStmt e cond then' else' -> IfStmt (f e) (fmap f cond) (fmap f then') (fmap (fmap f) else')
+      WhileStmt e cond body -> WhileStmt (f e) (fmap f cond) (fmap f body)
+      ExprStmt e expr -> ExprStmt (f e) (fmap f expr)
+      BlockStmt e exprs -> BlockStmt (f e) (map (fmap f) exprs)
+
+data LoxFunction e = LoxFunction
   { functionName :: Text,
     functionParams :: [Text],
-    functionBody :: [LoxStmt]
+    functionBody :: [LoxStmt e]
   }
   deriving stock (Eq, Show)
 
-data LoxExpr
-  = LoxString Text
-  | LoxNumber Double
-  | LoxVar Text
-  | LoxCall LoxExpr [LoxExpr]
-  | LoxGet LoxExpr Text
-  | LoxUnary LoxUnaryOp LoxExpr
-  | LoxBinary LoxBinaryOp LoxExpr LoxExpr
-  | LoxAssign Text LoxExpr
-  | LoxSet LoxExpr Text LoxExpr
+instance Functor LoxFunction where
+  fmap f fun@(LoxFunction{functionBody}) =
+    fun{functionBody = map (fmap f) functionBody}
+
+data LoxExpr e
+  = LoxString e Text
+  | LoxNumber e Double
+  | LoxVar e Text
+  | LoxCall e (LoxExpr e) [LoxExpr e]
+  | LoxGet e (LoxExpr e) Text
+  | LoxUnary e LoxUnaryOp (LoxExpr e)
+  | LoxBinary e LoxBinaryOp (LoxExpr e) (LoxExpr e)
+  | LoxAssign e Text (LoxExpr e)
+  | LoxSet e (LoxExpr e) Text (LoxExpr e)
   deriving stock (Eq, Show)
+
+instance Functor LoxExpr where
+  fmap f expr =
+    case expr of
+      LoxString e txt -> LoxString (f e) txt
+      LoxNumber e n -> LoxNumber (f e) n
+      LoxVar e txt -> LoxVar (f e) txt
+      LoxCall e expr params -> LoxCall (f e) (fmap f expr) (map (fmap f) params)
+      LoxGet e expr name -> LoxGet (f e) (fmap f expr) name
+      LoxUnary e op expr -> LoxUnary (f e) op (fmap f expr)
+      LoxBinary e op e1 e2 -> LoxBinary (f e) op (fmap f e1) (fmap f e2)
+      LoxAssign e name expr -> LoxAssign (f e) name (fmap f expr)
+      LoxSet e expr name val -> LoxSet (f e) (fmap f expr) name (fmap f val)
 
 data LoxUnaryOp
   = Exclamation

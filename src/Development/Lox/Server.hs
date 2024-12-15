@@ -68,7 +68,7 @@ handleDiagnostics msg = do
 
 parseLoxSource
   :: LSP.Uri
-  -> LSP.LspM c (Either LoxError LoxProgram)
+  -> LSP.LspM c (Either LoxError LocatedLoxProgram)
 parseLoxSource uri' = runExceptT $ do
   let filePath = LSP.uriToFilePath uri'
   virtualFile <- ExceptT getVirtualFile
@@ -128,7 +128,7 @@ hoverParseFailure :: Position -> LoxError -> LSP.Hover
 hoverParseFailure _ err =
   LSP.Hover (LSP.InL (LSP.mkMarkdown (show err))) Nothing
 
-hoverParseSuccess :: Position -> LoxProgram -> LSP.Hover
+hoverParseSuccess :: Position -> LocatedLoxProgram -> LSP.Hover
 hoverParseSuccess pos _ =
   -- TODO: Look up symbol at pos
   LSP.Hover (LSP.InL hoverText) Nothing

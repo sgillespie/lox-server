@@ -54,9 +54,12 @@ spec = do
       let prog = parseLox Nothing (decodeUtf8 loxText)
       prog `shouldBe` Right helloWorldProg
 
-helloWorldProg :: LoxProgram
+helloWorldProg :: LocatedLoxProgram
 helloWorldProg =
   LoxProgram
     [ PrintStmt
-        (LoxString "Hello, world!")
+        (mkRange (2, 1) (2, 23))
+        (LoxString (mkRange (2, 7) (2, 22)) "Hello, world!")
     ]
+  where
+    mkRange (l1, c1) (l2, c2) = Range (Position l1 c1) (Position l2 c2)
