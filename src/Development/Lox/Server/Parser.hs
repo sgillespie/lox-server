@@ -8,6 +8,7 @@ import Development.Lox.Server.Types qualified as Types
 import Control.Exception (throwIO)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (foldr1)
+import Extra (uncurry3)
 import Relude.Unsafe (read)
 import System.FilePath (takeFileName)
 import Text.Megaparsec
@@ -82,8 +83,6 @@ classStmt =
       <$> (symbol "class" *> identifier)
       <*> optional (symbol "<" *> identifier)
       <*> braces (many function)
-  where
-    uncurry3 f (a, b, c) = f a b c
 
 stmt :: Parser Types.LocatedLoxStmt
 stmt =
@@ -130,8 +129,6 @@ ifStmt = do
       <$> (symbol "if" *> parens expr)
       <*> stmt
       <*> optional (symbol "else" *> stmt)
-  where
-    uncurry3 f (a, b, c) = f a b c
 
 whileStmt :: Parser Types.LocatedLoxStmt
 whileStmt =
