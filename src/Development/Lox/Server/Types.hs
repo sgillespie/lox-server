@@ -13,6 +13,8 @@ module Development.Lox.Server.Types
     LoxBinaryOp (..),
     Range (..),
     Position (..),
+    stmtRange,
+    exprRange,
     fromParseErrorBundle,
     parsingErrorRange,
     isLoxError,
@@ -85,12 +87,12 @@ instance Functor LoxExpr where
       LoxString e txt -> LoxString (f e) txt
       LoxNumber e n -> LoxNumber (f e) n
       LoxVar e txt -> LoxVar (f e) txt
-      LoxCall e expr params -> LoxCall (f e) (fmap f expr) (map (fmap f) params)
-      LoxGet e expr name -> LoxGet (f e) (fmap f expr) name
-      LoxUnary e op expr -> LoxUnary (f e) op (fmap f expr)
+      LoxCall e expr' params -> LoxCall (f e) (fmap f expr') (map (fmap f) params)
+      LoxGet e expr' name -> LoxGet (f e) (fmap f expr') name
+      LoxUnary e op expr' -> LoxUnary (f e) op (fmap f expr')
       LoxBinary e op e1 e2 -> LoxBinary (f e) op (fmap f e1) (fmap f e2)
-      LoxAssign e name expr -> LoxAssign (f e) name (fmap f expr)
-      LoxSet e expr name val -> LoxSet (f e) (fmap f expr) name (fmap f val)
+      LoxAssign e name expr' -> LoxAssign (f e) name (fmap f expr')
+      LoxSet e expr' name val -> LoxSet (f e) (fmap f expr') name (fmap f val)
 
 data LoxUnaryOp
   = Exclamation
@@ -121,6 +123,28 @@ data LoxParsingError = LoxParsingError Range Text
   deriving (Eq, Ord, Show)
 
 instance Exception LoxError
+
+stmtRange :: LocatedLoxStmt -> Range
+stmtRange (VarStmt r _ _) = r
+stmtRange (FunctionStmt r _) = r
+stmtRange (ClassStmt r _ _ _) = r
+stmtRange (PrintStmt r _) = r
+stmtRange (ReturnStmt r _) = r
+stmtRange (IfStmt r _ _ _) = r
+stmtRange (WhileStmt r _ _) = r
+stmtRange (ExprStmt r _) = r
+stmtRange (BlockStmt r _) = r
+
+exprRange :: LocatedLoxExpr -> Range
+exprRange (LoxString r _) = r
+exprRange (LoxNumber r _) = r
+exprRange (LoxVar r _) = r
+exprRange (LoxCall r _ _) = r
+exprRange (LoxGet r _ _) = r
+exprRange (LoxUnary r _ _) = r
+exprRange (LoxBinary r _ _ _) = r
+exprRange (LoxAssign r _ _) = r
+exprRange (LoxSet r _ _ _) = r
 
 fromParseErrorBundle
   :: Parsec.ParseErrorBundle Text Void

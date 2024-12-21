@@ -8,7 +8,7 @@ import Development.Lox.Server.Types qualified as Types
 import Control.Exception (throwIO)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (foldr1)
-import Extra (uncurry3)
+import Data.Tuple.Extra (uncurry3)
 import Relude.Unsafe (read)
 import System.FilePath (takeFileName)
 import Text.Megaparsec
@@ -100,7 +100,7 @@ fromSourcePos s1 s2 =
   where
     toPosition (SourcePos{sourceLine, sourceColumn}) =
       Types.Position (toUInt sourceLine) (toUInt sourceColumn)
-    toUInt = fromIntegral . unPos
+    toUInt = fromIntegral . pred . unPos
 
 withRange :: (Types.Range -> p -> p') -> Parser p -> Parser p'
 withRange f p = do

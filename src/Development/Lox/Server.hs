@@ -7,6 +7,7 @@ module Development.Lox.Server
 
 import Development.Lox.Server.Parser (parseLox)
 
+import Development.Lox.Server.Span (SpanResult (..), spanAtPos)
 import Development.Lox.Server.Types
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as Lens
@@ -129,11 +130,15 @@ hoverParseFailure _ err =
   LSP.Hover (LSP.InL (LSP.mkMarkdown (show err))) Nothing
 
 hoverParseSuccess :: Position -> LocatedLoxProgram -> LSP.Hover
-hoverParseSuccess pos _ =
-  -- TODO: Look up symbol at pos
-  LSP.Hover (LSP.InL hoverText) Nothing
+hoverParseSuccess pos lox =
+  LSP.Hover (LSP.InL (LSP.mkMarkdown $ searchRes <> suffix)) Nothing
   where
-    hoverText = LSP.mkMarkdown $ "Hello, Sean!" <> " (" <> show pos <> ")"
+    suffix = " (" <> show pos <> ")"
+    searchRes =
+      case spanAtPos pos lox of
+        ResNothing -> "?"
+        ResLoxStmt stmt -> "stmt: " <> show stmt
+        ResLoxExpr expr -> "expr: " <> show expr
 
 lspOptions :: LSP.Options
 lspOptions =
