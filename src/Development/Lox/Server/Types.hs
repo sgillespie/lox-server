@@ -23,6 +23,7 @@ module Development.Lox.Server.Types
   ) where
 
 import Language.LSP.Protocol.Types (Position (..), Range (..), UInt)
+import Prettyprinter
 import Text.Megaparsec qualified as Parsec
 
 type LocatedLoxProgram = LoxProgram Range
@@ -58,6 +59,19 @@ instance Functor LoxStmt where
       ExprStmt e expr -> ExprStmt (f e) (fmap f expr)
       BlockStmt e exprs -> BlockStmt (f e) (map (fmap f) exprs)
 
+instance Pretty e => Pretty (LoxStmt e) where
+  pretty (VarStmt _ name v) =
+    "var" <+> pretty name <> maybe "" ((" =" <+>) . pretty) v
+  pretty (FunctionStmt _ fun) = pretty fun
+  pretty (ClassStmt _ name extends _) =
+    "class" <+> pretty name <+> maybe "" (("<" <+>) . pretty) extends
+  pretty (PrintStmt _ expr) = "print" <+> pretty expr
+  pretty (ReturnStmt _ expr) = "return" <+> pretty expr
+  pretty (IfStmt _ cond _ _) = "if" <+> pretty cond
+  pretty (WhileStmt _ cond _) = "while" <+> pretty cond
+  pretty (ExprStmt _ expr) = pretty expr
+  pretty (BlockStmt _ _) = "{ ... }"
+
 data LoxFunction e = LoxFunction
   { functionName :: Text,
     functionParams :: [Text],
@@ -68,6 +82,9 @@ data LoxFunction e = LoxFunction
 instance Functor LoxFunction where
   fmap f fun@(LoxFunction{functionBody}) =
     fun{functionBody = map (fmap f) functionBody}
+
+instance Pretty e => Pretty (LoxFunction e) where
+  pretty _ = "function"
 
 data LoxExpr e
   = LoxString e Text
@@ -94,10 +111,26 @@ instance Functor LoxExpr where
       LoxAssign e name expr' -> LoxAssign (f e) name (fmap f expr')
       LoxSet e expr' name val -> LoxSet (f e) (fmap f expr') name (fmap f val)
 
+instance Pretty e => Pretty (LoxExpr e) where
+  pretty (LoxString _ str) = "\"" <> pretty str <> "\""
+  pretty (LoxNumber _ n) = pretty n
+  pretty (LoxVar _ n) = pretty n
+  pretty (LoxCall _ obj params) = pretty obj <> "(" <> pretty params <> ")"
+  pretty (LoxGet _ obj name) = pretty obj <> "." <> pretty name
+  pretty (LoxUnary _ op expr) = pretty op <> pretty expr
+  pretty (LoxBinary _ op e1 e2) = pretty e1 <+> pretty op <+> pretty e2
+  pretty (LoxAssign _ name expr) = pretty name <+> "=" <+> pretty expr
+  pretty (LoxSet _ obj name expr) =
+    pretty obj <> "." <> pretty name <+> "=" <+> pretty expr
+
 data LoxUnaryOp
   = Exclamation
   | Dash
   deriving (Eq, Show)
+
+instance Pretty LoxUnaryOp where
+  pretty Exclamation = "!"
+  pretty Dash = "-"
 
 data LoxBinaryOp
   = Mul
@@ -113,6 +146,20 @@ data LoxBinaryOp
   | LogicalAnd
   | LogicalOr
   deriving (Eq, Ord, Show)
+
+instance Pretty LoxBinaryOp where
+  pretty Mul = "*"
+  pretty Div = "/"
+  pretty Add = "+"
+  pretty Sub = "-"
+  pretty Greater = ">"
+  pretty GreaterEq = ">="
+  pretty Less = "<"
+  pretty LessEq = "<="
+  pretty Eq = "=="
+  pretty NotEq = "!="
+  pretty LogicalAnd = "&&"
+  pretty LogicalOr = "||"
 
 data LoxError
   = LoxParsingErrors [LoxParsingError]

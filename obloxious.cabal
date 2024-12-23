@@ -36,6 +36,7 @@ library
   exposed-modules:
     Development.Lox.Server
     Development.Lox.Server.Parser
+    Development.Lox.Server.Pretty
     Development.Lox.Server.Span
     Development.Lox.Server.Types
 

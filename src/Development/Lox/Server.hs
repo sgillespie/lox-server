@@ -7,6 +7,8 @@ module Development.Lox.Server
 
 import Development.Lox.Server.Parser (parseLox)
 
+import Data.Text.Prettyprint.Doc (Pretty (..))
+import Development.Lox.Server.Pretty
 import Development.Lox.Server.Span (SpanResult (..), spanAtPos)
 import Development.Lox.Server.Types
 import Language.LSP.Diagnostics (partitionBySource)
@@ -136,9 +138,9 @@ hoverParseSuccess pos lox =
     suffix = " (" <> show pos <> ")"
     searchRes =
       case spanAtPos pos lox of
-        ResNothing -> "?"
-        ResLoxStmt stmt -> "stmt: " <> show stmt
-        ResLoxExpr expr -> "expr: " <> show expr
+        ResNothing -> ""
+        ResLoxStmt stmt -> showDoc $ "stmt: " <> pretty stmt
+        ResLoxExpr expr -> showDoc $ "expr: " <> pretty expr
 
 lspOptions :: LSP.Options
 lspOptions =
