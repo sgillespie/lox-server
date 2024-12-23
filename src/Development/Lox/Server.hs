@@ -6,10 +6,8 @@ module Development.Lox.Server
   ) where
 
 import Development.Lox.Server.Parser (parseLox)
-
-import Data.Text.Prettyprint.Doc (Pretty (..))
 import Development.Lox.Server.Pretty
-import Development.Lox.Server.Span (SpanResult (..), spanAtPos)
+import Development.Lox.Server.Span qualified as Span
 import Development.Lox.Server.Types
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as Lens
@@ -18,6 +16,7 @@ import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server qualified as LSP
 import Language.LSP.VFS qualified as VFS
 import Lens.Micro
+import Prettyprinter
 
 runServer :: IO ()
 runServer =
@@ -71,7 +70,7 @@ handleDiagnostics msg = do
 
 parseLoxSource
   :: LSP.Uri
-  -> LSP.LspM c (Either LoxError LocatedLoxProgram)
+  -> LSP.LspM c (Either LoxError Span.LocatedLoxProgram)
 parseLoxSource uri' = runExceptT $ do
   let filePath = LSP.uriToFilePath uri'
   virtualFile <- ExceptT getVirtualFile
@@ -127,20 +126,22 @@ handleHover req responder = do
     Left err -> responder . Right . LSP.InL $ hoverParseFailure pos err
     Right parsed -> responder . Right . LSP.InL $ hoverParseSuccess pos parsed
 
-hoverParseFailure :: Position -> LoxError -> LSP.Hover
+hoverParseFailure :: Span.Position -> LoxError -> LSP.Hover
 hoverParseFailure _ err =
   LSP.Hover (LSP.InL (LSP.mkMarkdown (show err))) Nothing
 
-hoverParseSuccess :: Position -> LocatedLoxProgram -> LSP.Hover
+hoverParseSuccess :: Span.Position -> Span.LocatedLoxProgram -> LSP.Hover
 hoverParseSuccess pos lox =
-  LSP.Hover (LSP.InL (LSP.mkMarkdown $ searchRes <> suffix)) Nothing
+  LSP.Hover (LSP.InL (LSP.mkMarkdown searchRes)) Nothing
   where
-    suffix = " (" <> show pos <> ")"
+    suffix span' = "(" <> pretty (Span.loc span') <> ")"
     searchRes =
-      case spanAtPos pos lox of
-        ResNothing -> ""
-        ResLoxStmt stmt -> showDoc $ "stmt: " <> pretty stmt
-        ResLoxExpr expr -> showDoc $ "expr: " <> pretty expr
+      case Span.spanAtPos pos lox of
+        Span.ResNothing -> mempty
+        Span.ResLoxStmt stmt ->
+          showDoc $ "stmt: " <> pretty stmt <+> suffix stmt
+        Span.ResLoxExpr expr ->
+          showDoc $ "expr: " <> pretty expr <+> suffix expr
 
 lspOptions :: LSP.Options
 lspOptions =

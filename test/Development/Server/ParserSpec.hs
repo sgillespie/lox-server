@@ -5,6 +5,7 @@ import Development.Lox.Server.Types
 import Paths_obloxious (getDataFileName)
 
 import Control.Exception (try)
+import Development.Lox.Server.Span (LocatedLoxProgram, Position (..), mkLocated)
 import Test.Syd
 
 spec :: Spec
@@ -62,4 +63,4 @@ helloWorldProg =
         (LoxString (mkRange (2, 7) (2, 22)) "Hello, world!")
     ]
   where
-    mkRange (l1, c1) (l2, c2) = Range (Position l1 c1) (Position l2 c2)
+    mkRange (l1, c1) (l2, c2) = mkLocated (Position l1 c1) (Position l2 c2)

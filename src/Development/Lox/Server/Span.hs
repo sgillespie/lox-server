@@ -1,10 +1,61 @@
 module Development.Lox.Server.Span
-  ( spanAtPos,
+  ( LocatedLoxProgram,
+    LocatedLoxStmt,
+    LocatedLoxFunction,
+    LocatedLoxExpr,
+    Located (..),
+    HasLocated (..),
     SpanResult (..),
+    LSP.Position (..),
+    mkLocated,
+    spanAtPos,
   ) where
 
 import Development.Lox.Server.Types
-import Language.LSP.Protocol.Types (positionInRange)
+import Language.LSP.Protocol.Types qualified as LSP
+import Prettyprinter (Pretty (..))
+
+type LocatedLoxProgram = LoxProgram Located
+type LocatedLoxStmt = LoxStmt Located
+type LocatedLoxFunction = LoxFunction Located
+type LocatedLoxExpr = LoxExpr Located
+
+newtype Located = Located {unLocated :: LSP.Range}
+  deriving stock (Eq, Show)
+
+instance Pretty Located where
+  pretty (Located (LSP.Range p1 p2)) =
+    prettyPos p1 <> "-" <> prettyPos p2
+    where
+      prettyPos (LSP.Position l c) = pretty l <> ":" <> pretty c
+
+mkLocated :: LSP.Position -> LSP.Position -> Located
+mkLocated p1 p2 = Located (LSP.Range p1 p2)
+
+class HasLocated a where
+  loc :: a -> Located
+
+instance HasLocated LocatedLoxStmt where
+  loc (VarStmt r _ _) = r
+  loc (FunctionStmt r _) = r
+  loc (ClassStmt r _ _ _) = r
+  loc (PrintStmt r _) = r
+  loc (ReturnStmt r _) = r
+  loc (IfStmt r _ _ _) = r
+  loc (WhileStmt r _ _) = r
+  loc (ExprStmt r _) = r
+  loc (BlockStmt r _) = r
+
+instance HasLocated LocatedLoxExpr where
+  loc (LoxString r _) = r
+  loc (LoxNumber r _) = r
+  loc (LoxVar r _) = r
+  loc (LoxCall r _ _) = r
+  loc (LoxGet r _ _) = r
+  loc (LoxUnary r _ _) = r
+  loc (LoxBinary r _ _ _) = r
+  loc (LoxAssign r _ _) = r
+  loc (LoxSet r _ _ _) = r
 
 data SpanResult
   = ResLoxStmt LocatedLoxStmt
@@ -13,7 +64,7 @@ data SpanResult
   deriving (Eq, Show)
 
 spanAtPos
-  :: Position
+  :: LSP.Position
   -> LocatedLoxProgram
   -> SpanResult
 spanAtPos pos (LoxProgram stmts) =
@@ -22,9 +73,10 @@ spanAtPos pos (LoxProgram stmts) =
     Just (Right expr) -> ResLoxExpr expr
     Nothing -> ResNothing
   where
-    spanAtPos' = findMaybe (findSpanStmt stmtInRange exprInRange)
-    stmtInRange = positionInRange pos . stmtRange
-    exprInRange = positionInRange pos . exprRange
+    spanAtPos' = findMaybe (findSpanStmt inRange inRange)
+
+    inRange :: HasLocated a => a -> Bool
+    inRange = LSP.positionInRange pos . unLocated . loc
 
 findSpanStmt
   :: (LoxStmt e -> Bool)

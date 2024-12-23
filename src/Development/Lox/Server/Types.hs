@@ -1,9 +1,5 @@
 module Development.Lox.Server.Types
-  ( LocatedLoxProgram,
-    LocatedLoxStmt,
-    LocatedLoxFunction,
-    LocatedLoxExpr,
-    LoxProgram (..),
+  ( LoxProgram (..),
     LoxStmt (..),
     LoxFunction (..),
     LoxExpr (..),
@@ -11,10 +7,6 @@ module Development.Lox.Server.Types
     LoxParsingError (..),
     LoxUnaryOp (..),
     LoxBinaryOp (..),
-    Range (..),
-    Position (..),
-    stmtRange,
-    exprRange,
     fromParseErrorBundle,
     parsingErrorRange,
     isLoxError,
@@ -25,11 +17,6 @@ module Development.Lox.Server.Types
 import Language.LSP.Protocol.Types (Position (..), Range (..), UInt)
 import Prettyprinter
 import Text.Megaparsec qualified as Parsec
-
-type LocatedLoxProgram = LoxProgram Range
-type LocatedLoxStmt = LoxStmt Range
-type LocatedLoxFunction = LoxFunction Range
-type LocatedLoxExpr = LoxExpr Range
 
 newtype LoxProgram e = LoxProgram [LoxStmt e]
   deriving stock (Eq, Show)
@@ -171,28 +158,6 @@ data LoxParsingError = LoxParsingError Range Text
 
 instance Exception LoxError
 
-stmtRange :: LocatedLoxStmt -> Range
-stmtRange (VarStmt r _ _) = r
-stmtRange (FunctionStmt r _) = r
-stmtRange (ClassStmt r _ _ _) = r
-stmtRange (PrintStmt r _) = r
-stmtRange (ReturnStmt r _) = r
-stmtRange (IfStmt r _ _ _) = r
-stmtRange (WhileStmt r _ _) = r
-stmtRange (ExprStmt r _) = r
-stmtRange (BlockStmt r _) = r
-
-exprRange :: LocatedLoxExpr -> Range
-exprRange (LoxString r _) = r
-exprRange (LoxNumber r _) = r
-exprRange (LoxVar r _) = r
-exprRange (LoxCall r _ _) = r
-exprRange (LoxGet r _ _) = r
-exprRange (LoxUnary r _ _) = r
-exprRange (LoxBinary r _ _ _) = r
-exprRange (LoxAssign r _ _) = r
-exprRange (LoxSet r _ _ _) = r
-
 fromParseErrorBundle
   :: Parsec.ParseErrorBundle Text Void
   -> LoxError
@@ -222,15 +187,15 @@ parseErrorRange err = do
 
   let offset = Parsec.errorOffset err
       newPosState = Parsec.reachOffsetNoLine offset posState
-      line = fromPosState Parsec.sourceLine newPosState
-      col = fromPosState Parsec.sourceColumn newPosState
+      posLine = fromPosState Parsec.sourceLine newPosState
+      posCol = fromPosState Parsec.sourceColumn newPosState
 
   put newPosState
 
   pure $
     Range
-      (Position (line - 1) (col - 1)) -- Parser position state
-      (Position (line - 1) maxBound) -- Until the end of the line
+      (Position (posLine - 1) (posCol - 1)) -- Parser position state
+      (Position (posLine - 1) maxBound) -- Until the end of the line
   where
     fromPosState :: (Parsec.SourcePos -> Parsec.Pos) -> Parsec.PosState s -> UInt
     fromPosState f = fromIntegral . Parsec.unPos . f . Parsec.pstateSourcePos
