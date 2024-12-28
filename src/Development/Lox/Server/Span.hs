@@ -56,6 +56,7 @@ instance HasLocated LocatedLoxExpr where
   loc (LoxBinary r _ _ _) = r
   loc (LoxAssign r _ _) = r
   loc (LoxSet r _ _ _) = r
+  loc (LoxSuper r _) = r
 
 data SpanResult
   = ResLoxStmt LocatedLoxStmt
@@ -134,6 +135,7 @@ findSpanExpr f expr =
       LoxBinary _ _ e1 e2 -> findSpanExpr f e1 <|> findSpanExpr f e2 <|> def
       LoxAssign _ _ val -> findSpanExpr f val <|> def
       LoxSet _ obj _ val -> findSpanExpr f obj <|> findSpanExpr f val <|> def
+      LoxSuper _ _ -> def
   where
     whenF c = if f expr then c else Nothing
     def = Just expr

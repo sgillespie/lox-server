@@ -67,6 +67,7 @@ test-suite obloxious-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+    Development.Server.Parser.InternalSpec
     Development.Server.ParserSpec
     Paths_obloxious
   hs-source-dirs: test
@@ -76,8 +77,10 @@ test-suite obloxious-test
   build-depends:
     obloxious,
     hspec-megaparsec,
+    hspec,
     megaparsec,
-    sydtest
+    sydtest,
+    sydtest-hspec
   ghc-options:
     -threaded
     -rtsopts

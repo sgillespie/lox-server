@@ -83,6 +83,7 @@ data LoxExpr e
   | LoxBinary e LoxBinaryOp (LoxExpr e) (LoxExpr e)
   | LoxAssign e Text (LoxExpr e)
   | LoxSet e (LoxExpr e) Text (LoxExpr e)
+  | LoxSuper e Text
   deriving stock (Eq, Show)
 
 instance Functor LoxExpr where
@@ -97,6 +98,7 @@ instance Functor LoxExpr where
       LoxBinary e op e1 e2 -> LoxBinary (f e) op (fmap f e1) (fmap f e2)
       LoxAssign e name expr' -> LoxAssign (f e) name (fmap f expr')
       LoxSet e expr' name val -> LoxSet (f e) (fmap f expr') name (fmap f val)
+      LoxSuper e method -> LoxSuper (f e) method
 
 instance Pretty e => Pretty (LoxExpr e) where
   pretty (LoxString _ str) = "\"" <> pretty str <> "\""
@@ -109,6 +111,7 @@ instance Pretty e => Pretty (LoxExpr e) where
   pretty (LoxAssign _ name expr) = pretty name <+> "=" <+> pretty expr
   pretty (LoxSet _ obj name expr) =
     pretty obj <> "." <> pretty name <+> "=" <+> pretty expr
+  pretty (LoxSuper _ m) = "super." <> pretty m
 
 data LoxUnaryOp
   = Exclamation

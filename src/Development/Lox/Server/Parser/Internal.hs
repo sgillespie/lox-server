@@ -237,7 +237,8 @@ primary =
 
 superExpr :: Parser Span.LocatedLoxExpr
 superExpr =
-  symbol "super" *> symbol "." *> var
+  withRange Types.LoxSuper $
+    symbol "super" *> symbol "." *> identifier
 
 string :: Parser Span.LocatedLoxExpr
 string = withRange Types.LoxString (toText <$> betweenQuotes)
