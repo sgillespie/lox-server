@@ -8,3 +8,11 @@ test-show-details: direct
 constraints:
   -- Required for sydtest
   path-io >= 1.4.0
+
+-- TODO: Remove me when nixpkgs is updated
+source-repository-package
+    type: git
+    location: https://github.com/NorfairKing/sydtest
+    tag: 12c047f45e76a09fb88832d1006c0eff8c86fb66
+    --sha256: sha256-YGOsxWXWavBC12+1fvrKUz21z6yXK8DI6Apdbhn/23E=
+    subdir: sydtest-hspec

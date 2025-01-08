@@ -7,6 +7,7 @@ module Development.Lox.Server.Span
     HasLocated (..),
     SpanResult (..),
     LSP.Position (..),
+    LSP.UInt,
     mkLocated,
     spanAtPos,
   ) where

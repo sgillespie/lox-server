@@ -19,6 +19,7 @@ import Development.Lox.Server.Types qualified as Types
 import Control.Monad.Combinators.Expr
 import Data.Foldable (foldr1)
 import Data.Tuple.Extra (uncurry3)
+import Language.LSP.Protocol.Types (Range (..))
 import Relude.Unsafe (read)
 import Text.Megaparsec hiding (ParseError)
 import Text.Megaparsec.Char qualified as Char
@@ -99,9 +100,11 @@ stmt =
 fromSourcePos :: SourcePos -> SourcePos -> Span.Located
 fromSourcePos s1 s2 =
   Span.mkLocated (toPosition s1) (toPosition s2)
+
+toPosition :: SourcePos -> Span.Position
+toPosition (SourcePos{sourceLine, sourceColumn}) =
+  Span.Position (toUInt sourceLine) (toUInt sourceColumn)
   where
-    toPosition (SourcePos{sourceLine, sourceColumn}) =
-      Span.Position (toUInt sourceLine) (toUInt sourceColumn)
     toUInt = fromIntegral . pred . unPos
 
 withRange :: (Span.Located -> p -> p') -> Parser p -> Parser p'
@@ -189,25 +192,40 @@ opExpr :: Parser Span.LocatedLoxExpr
 opExpr = makeExprParser term table <?> "expression"
   where
     table =
-      [ [Prefix $ manyUnary (exclamation <|> dash)],
-        [ InfixL $ withRange Types.LoxBinary mul,
-          InfixL $ withRange Types.LoxBinary div
+      [ [ Prefix $ mkUnary (dash <|> exclamation)
         ],
-        [ InfixL $ withRange Types.LoxBinary add,
-          InfixL $ withRange Types.LoxBinary sub
+        [ InfixL $ mkBinary <$> mul,
+          InfixL $ mkBinary <$> div
         ],
-        [ InfixL $ withRange Types.LoxBinary greaterEq,
-          InfixL $ withRange Types.LoxBinary greater,
-          InfixL $ withRange Types.LoxBinary lessEq,
-          InfixL $ withRange Types.LoxBinary less
+        [ InfixL $ mkBinary <$> add,
+          InfixL $ mkBinary <$> sub
         ],
-        [ InfixN $ withRange Types.LoxBinary eq,
-          InfixN $ withRange Types.LoxBinary notEq
+        [ InfixL $ mkBinary <$> greaterEq,
+          InfixL $ mkBinary <$> greater,
+          InfixL $ mkBinary <$> lessEq,
+          InfixL $ mkBinary <$> less
         ],
-        [InfixL $ withRange Types.LoxBinary logicalAnd],
-        [InfixL $ withRange Types.LoxBinary logicalOr]
+        [ InfixN $ mkBinary <$> eq,
+          InfixN $ mkBinary <$> notEq
+        ],
+        [InfixL $ mkBinary <$> logicalAnd],
+        [InfixL $ mkBinary <$> logicalOr]
       ]
-    manyUnary p = foldr1 (.) <$> some (withRange Types.LoxUnary p)
+    mkUnary p = manyUnary $ do
+      p1 <- getSourcePos
+      op <- p
+
+      pure $ \expr' ->
+        let (Span.Located (Range _ p2)) = Span.loc expr'
+            loc = Span.mkLocated (toPosition p1) p2
+        in Types.LoxUnary loc op expr'
+
+    manyUnary p = foldr1 (.) <$> some p
+
+    mkBinary op lhs rhs =
+      let (Span.Located (Range p1 _)) = Span.loc lhs
+          (Span.Located (Range _ p2)) = Span.loc rhs
+      in Types.LoxBinary (Span.Located (Range p1 p2)) op lhs rhs
 
 term :: Parser Span.LocatedLoxExpr
 term =
