@@ -18,7 +18,6 @@ import Development.Lox.Server.Types qualified as Types
 
 import Control.Monad.Combinators.Expr
 import Data.Foldable (foldr1)
-import Data.Tuple.Extra (uncurry3)
 import Language.LSP.Protocol.Types (Range (..))
 import Relude.Unsafe (read)
 import Text.Megaparsec hiding (ParseError)
@@ -62,15 +61,15 @@ declaration =
 
 varStmt :: Parser Span.LocatedLoxStmt
 varStmt =
-  withRange (uncurry . Types.VarStmt) $
-    (,)
+  withRange $
+    Types.VarStmt
       <$> (symbol "var" *> identifier)
       <*> optional (symbol "=" *> expr)
       <* symbol ";"
 
 functionStmt :: Parser Span.LocatedLoxStmt
 functionStmt =
-  withRange Types.FunctionStmt (symbol "fun" *> function)
+  withRange $ Types.FunctionStmt <$> (symbol "fun" *> function)
 
 function :: Parser Span.LocatedLoxFunction
 function =
@@ -81,8 +80,8 @@ function =
 
 classStmt :: Parser Span.LocatedLoxStmt
 classStmt =
-  withRange (uncurry3 . Types.ClassStmt) $
-    (,,)
+  withRange $
+    Types.ClassStmt
       <$> (symbol "class" *> identifier)
       <*> optional (symbol "<" *> identifier)
       <*> braces (many function)
@@ -107,72 +106,75 @@ toPosition (SourcePos{sourceLine, sourceColumn}) =
   where
     toUInt = fromIntegral . pred . unPos
 
-withRange :: (Span.Located -> p -> p') -> Parser p -> Parser p'
-withRange f p = do
+withRange :: Parser (Span.Located -> p) -> Parser p
+withRange p = do
   sourcePos1 <- getSourcePos
   p' <- p
   sourcePos2 <- getSourcePos
 
-  pure $ f (fromSourcePos sourcePos1 sourcePos2) p'
+  let range = fromSourcePos sourcePos1 sourcePos2
+
+  pure (p' range)
 
 printStmt :: Parser Span.LocatedLoxStmt
 printStmt = do
-  withRange Types.PrintStmt parsePrintExpr
+  withRange $ Types.PrintStmt <$> parsePrintExpr
   where
     parsePrintExpr = symbol "print" *> expr <* symbol ";"
 
 returnStmt :: Parser Span.LocatedLoxStmt
 returnStmt =
-  withRange Types.ReturnStmt parseReturnStmt
+  withRange $ Types.ReturnStmt <$> parseReturnStmt
   where
     parseReturnStmt = symbol "return" *> optional expr <* symbol ";"
 
 ifStmt :: Parser Span.LocatedLoxStmt
-ifStmt = do
-  withRange (uncurry3 . Types.IfStmt) $
-    (,,)
+ifStmt =
+  withRange $
+    Types.IfStmt
       <$> (symbol "if" *> parens expr)
       <*> stmt
       <*> optional (symbol "else" *> stmt)
 
 whileStmt :: Parser Span.LocatedLoxStmt
 whileStmt =
-  withRange (uncurry . Types.WhileStmt) $
-    (,)
+  withRange $
+    Types.WhileStmt
       <$> (symbol "while" *> parens expr)
       <*> stmt
 
 forStmt :: Parser Span.LocatedLoxStmt
 forStmt = do
-  (range, (init', cond, incr, body)) <- withRange (,) $ do
-    void (symbol "for")
-    (init', cond, incr) <-
-      parens $ do
-        init' <- varStmt <|> exprStmt
-        cond <- optional expr <* symbol ";"
-        incr <- optional expr
-        pure (init', cond, incr)
-    body <- stmt
+  ((init', cond, incr, body), range) <-
+    withRange $ do
+      void (symbol "for")
+      (init', cond, incr) <-
+        parens $ do
+          init' <- varStmt <|> exprStmt
+          cond <- optional expr <* symbol ";"
+          incr <- optional expr
+          pure (init', cond, incr)
+      body <- stmt
 
-    pure (init', cond, incr, body)
+      pure ((init', cond, incr, body),)
 
   -- Transform into a while
-  let cond' = fromMaybe (Types.LoxVar range "true") cond
-      incrStmt = Types.ExprStmt range <$> incr
+  let cond' = fromMaybe (Types.LoxVar "true" range) cond
+      incrStmt = flip Types.ExprStmt range <$> incr
       body' =
         case incrStmt of
-          Just incr' -> Types.BlockStmt range (body : [incr'])
+          Just incr' -> Types.BlockStmt (body : [incr']) range
           Nothing -> body
 
-  pure $ Types.BlockStmt range [init', Types.WhileStmt range cond' body']
+  pure $ Types.BlockStmt [init', Types.WhileStmt cond' body' range] range
 
 exprStmt :: Parser Span.LocatedLoxStmt
-exprStmt = withRange Types.ExprStmt parseStmt'
+exprStmt = withRange $ Types.ExprStmt <$> parseStmt'
   where
     parseStmt' = expr <* symbol ";"
 
 blockStmt :: Parser Span.LocatedLoxStmt
-blockStmt = withRange Types.BlockStmt block
+blockStmt = withRange $ Types.BlockStmt <$> block
 
 block :: Parser [Span.LocatedLoxStmt]
 block = braces (many declaration)
@@ -183,9 +185,9 @@ expr = assignment
 assignment :: Parser Span.LocatedLoxExpr
 assignment =
   try
-    (withRange (uncurry . uncurry . Types.LoxSet) $ (,) <$> get' <*> (symbol "=" *> opExpr))
+    (withRange $ uncurry Types.LoxSet <$> get' <*> (symbol "=" *> opExpr))
     <|> try
-      (withRange (uncurry . Types.LoxAssign) $ (,) <$> identifier <*> (symbol "=" *> opExpr))
+      (withRange $ Types.LoxAssign <$> identifier <*> (symbol "=" *> opExpr))
     <|> opExpr
 
 opExpr :: Parser Span.LocatedLoxExpr
@@ -218,14 +220,14 @@ opExpr = makeExprParser term table <?> "expression"
       pure $ \expr' ->
         let (Span.Located (Range _ p2)) = Span.loc expr'
             loc = Span.mkLocated (toPosition p1) p2
-        in Types.LoxUnary loc op expr'
+        in Types.LoxUnary op expr' loc
 
     manyUnary p = foldr1 (.) <$> some p
 
     mkBinary op lhs rhs =
       let (Span.Located (Range p1 _)) = Span.loc lhs
           (Span.Located (Range _ p2)) = Span.loc rhs
-      in Types.LoxBinary (Span.Located (Range p1 p2)) op lhs rhs
+      in Types.LoxBinary op lhs rhs (Span.Located (Range p1 p2))
 
 term :: Parser Span.LocatedLoxExpr
 term =
@@ -235,12 +237,13 @@ term =
 
 funCall :: Parser Span.LocatedLoxExpr
 funCall =
-  withRange (uncurry . Types.LoxCall) $
-    (,) <$> primary <*> parens (commaSep expr)
+  withRange $
+    Types.LoxCall
+      <$> primary
+      <*> parens (commaSep expr)
 
 get :: Parser Span.LocatedLoxExpr
-get =
-  withRange (uncurry . Types.LoxGet) get'
+get = withRange $ uncurry Types.LoxGet <$> get'
 
 get' :: Parser (Span.LocatedLoxExpr, Text)
 get' = (,) <$> primary <*> (symbol "." *> identifier)
@@ -255,28 +258,28 @@ primary =
 
 superExpr :: Parser Span.LocatedLoxExpr
 superExpr =
-  withRange Types.LoxSuper $
-    symbol "super" *> symbol "." *> identifier
+  withRange $
+    Types.LoxSuper <$> (symbol "super" *> symbol "." *> identifier)
 
 string :: Parser Span.LocatedLoxExpr
-string = withRange Types.LoxString (toText <$> betweenQuotes)
+string = withRange (Types.LoxString . toText <$> betweenQuotes)
   where
     betweenQuotes = Char.char '\"' *> manyTill Lex.charLiteral (Char.char '\"')
 
 number :: Parser Span.LocatedLoxExpr
 number =
-  withRange (uncurry . mkNumber) $
-    (,)
+  withRange $
+    mkNumber
       <$> some Char.digitChar
       <*> optional (Char.char '.' *> some Char.digitChar)
   where
-    mkNumber :: Span.Located -> String -> Maybe String -> Span.LocatedLoxExpr
-    mkNumber r intPart Nothing = Types.LoxNumber r (read intPart)
-    mkNumber r intPart (Just decPart) =
-      Types.LoxNumber r $ read $ intPart <> "." <> decPart
+    mkNumber :: String -> Maybe String -> Span.Located -> Span.LocatedLoxExpr
+    mkNumber intPart Nothing r = Types.LoxNumber (read intPart) r
+    mkNumber intPart (Just decPart) r =
+      Types.LoxNumber (read $ intPart <> "." <> decPart) r
 
 var :: Parser Span.LocatedLoxExpr
-var = withRange Types.LoxVar identifier
+var = withRange (Types.LoxVar <$> identifier)
 
 mul :: Parser Types.LoxBinaryOp
 mul = symbol "*" $> Types.Mul

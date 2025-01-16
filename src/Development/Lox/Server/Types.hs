@@ -22,41 +22,41 @@ newtype LoxProgram e = LoxProgram [LoxStmt e]
   deriving stock (Eq, Show)
 
 data LoxStmt e
-  = VarStmt e Text (Maybe (LoxExpr e))
-  | FunctionStmt e (LoxFunction e)
-  | ClassStmt e Text (Maybe Text) [LoxFunction e]
-  | PrintStmt e (LoxExpr e)
-  | ReturnStmt e (Maybe (LoxExpr e))
-  | IfStmt e (LoxExpr e) (LoxStmt e) (Maybe (LoxStmt e))
-  | WhileStmt e (LoxExpr e) (LoxStmt e)
-  | ExprStmt e (LoxExpr e)
-  | BlockStmt e [LoxStmt e]
+  = VarStmt Text (Maybe (LoxExpr e)) e
+  | FunctionStmt (LoxFunction e) e
+  | ClassStmt Text (Maybe Text) [LoxFunction e] e
+  | PrintStmt (LoxExpr e) e
+  | ReturnStmt (Maybe (LoxExpr e)) e
+  | IfStmt (LoxExpr e) (LoxStmt e) (Maybe (LoxStmt e)) e
+  | WhileStmt (LoxExpr e) (LoxStmt e) e
+  | ExprStmt (LoxExpr e) e
+  | BlockStmt [LoxStmt e] e
   deriving stock (Eq, Show)
 
 instance Functor LoxStmt where
   fmap f stmt =
     case stmt of
-      VarStmt e txt expr -> VarStmt (f e) txt (fmap (fmap f) expr)
-      FunctionStmt e fun -> FunctionStmt (f e) (fmap f fun)
-      ClassStmt e name extends body -> ClassStmt (f e) name extends (map (fmap f) body)
-      PrintStmt e expr -> PrintStmt (f e) (fmap f expr)
-      ReturnStmt e expr -> ReturnStmt (f e) (fmap (fmap f) expr)
-      IfStmt e cond then' else' -> IfStmt (f e) (fmap f cond) (fmap f then') (fmap (fmap f) else')
-      WhileStmt e cond body -> WhileStmt (f e) (fmap f cond) (fmap f body)
-      ExprStmt e expr -> ExprStmt (f e) (fmap f expr)
-      BlockStmt e exprs -> BlockStmt (f e) (map (fmap f) exprs)
+      VarStmt txt expr e -> VarStmt txt (fmap (fmap f) expr) (f e)
+      FunctionStmt fun e -> FunctionStmt (fmap f fun) (f e)
+      ClassStmt name extends body e -> ClassStmt name extends (map (fmap f) body) (f e)
+      PrintStmt expr e -> PrintStmt (fmap f expr) (f e)
+      ReturnStmt expr e -> ReturnStmt (fmap (fmap f) expr) (f e)
+      IfStmt cond then' else' e -> IfStmt (fmap f cond) (fmap f then') (fmap (fmap f) else') (f e)
+      WhileStmt cond body e -> WhileStmt (fmap f cond) (fmap f body) (f e)
+      ExprStmt expr e -> ExprStmt (fmap f expr) (f e)
+      BlockStmt exprs e -> BlockStmt (map (fmap f) exprs) (f e)
 
 instance Pretty e => Pretty (LoxStmt e) where
-  pretty (VarStmt _ name v) =
+  pretty (VarStmt name v _) =
     "var" <+> pretty name <> maybe "" ((" =" <+>) . pretty) v
-  pretty (FunctionStmt _ fun) = pretty fun
-  pretty (ClassStmt _ name extends _) =
+  pretty (FunctionStmt fun _) = pretty fun
+  pretty (ClassStmt name extends _ _) =
     "class" <+> pretty name <+> maybe "" (("<" <+>) . pretty) extends
-  pretty (PrintStmt _ expr) = "print" <+> pretty expr
-  pretty (ReturnStmt _ expr) = "return" <+> pretty expr
-  pretty (IfStmt _ cond _ _) = "if" <+> pretty cond
-  pretty (WhileStmt _ cond _) = "while" <+> pretty cond
-  pretty (ExprStmt _ expr) = pretty expr
+  pretty (PrintStmt expr _) = "print" <+> pretty expr
+  pretty (ReturnStmt expr _) = "return" <+> pretty expr
+  pretty (IfStmt cond _ _ _) = "if" <+> pretty cond
+  pretty (WhileStmt cond _ _) = "while" <+> pretty cond
+  pretty (ExprStmt expr _) = pretty expr
   pretty (BlockStmt _ _) = "{ ... }"
 
 data LoxFunction e = LoxFunction
@@ -74,44 +74,44 @@ instance Pretty e => Pretty (LoxFunction e) where
   pretty _ = "function"
 
 data LoxExpr e
-  = LoxString e Text
-  | LoxNumber e Double
-  | LoxVar e Text
-  | LoxCall e (LoxExpr e) [LoxExpr e]
-  | LoxGet e (LoxExpr e) Text
-  | LoxUnary e LoxUnaryOp (LoxExpr e)
-  | LoxBinary e LoxBinaryOp (LoxExpr e) (LoxExpr e)
-  | LoxAssign e Text (LoxExpr e)
-  | LoxSet e (LoxExpr e) Text (LoxExpr e)
-  | LoxSuper e Text
+  = LoxString Text e
+  | LoxNumber Double e
+  | LoxVar Text e
+  | LoxCall (LoxExpr e) [LoxExpr e] e
+  | LoxGet (LoxExpr e) Text e
+  | LoxUnary LoxUnaryOp (LoxExpr e) e
+  | LoxBinary LoxBinaryOp (LoxExpr e) (LoxExpr e) e
+  | LoxAssign Text (LoxExpr e) e
+  | LoxSet (LoxExpr e) Text (LoxExpr e) e
+  | LoxSuper Text e
   deriving stock (Eq, Show)
 
 instance Functor LoxExpr where
   fmap f expr =
     case expr of
-      LoxString e txt -> LoxString (f e) txt
-      LoxNumber e n -> LoxNumber (f e) n
-      LoxVar e txt -> LoxVar (f e) txt
-      LoxCall e expr' params -> LoxCall (f e) (fmap f expr') (map (fmap f) params)
-      LoxGet e expr' name -> LoxGet (f e) (fmap f expr') name
-      LoxUnary e op expr' -> LoxUnary (f e) op (fmap f expr')
-      LoxBinary e op e1 e2 -> LoxBinary (f e) op (fmap f e1) (fmap f e2)
-      LoxAssign e name expr' -> LoxAssign (f e) name (fmap f expr')
-      LoxSet e expr' name val -> LoxSet (f e) (fmap f expr') name (fmap f val)
-      LoxSuper e method -> LoxSuper (f e) method
+      LoxString txt e -> LoxString txt (f e)
+      LoxNumber n e -> LoxNumber n (f e)
+      LoxVar txt e -> LoxVar txt (f e)
+      LoxCall expr' params e -> LoxCall (fmap f expr') (map (fmap f) params) (f e)
+      LoxGet expr' name e -> LoxGet (fmap f expr') name (f e)
+      LoxUnary op expr' e -> LoxUnary op (fmap f expr') (f e)
+      LoxBinary op e1 e2 e -> LoxBinary op (fmap f e1) (fmap f e2) (f e)
+      LoxAssign name expr' e -> LoxAssign name (fmap f expr') (f e)
+      LoxSet expr' name val e -> LoxSet (fmap f expr') name (fmap f val) (f e)
+      LoxSuper method e -> LoxSuper method (f e)
 
 instance Pretty e => Pretty (LoxExpr e) where
-  pretty (LoxString _ str) = "\"" <> pretty str <> "\""
-  pretty (LoxNumber _ n) = pretty n
-  pretty (LoxVar _ n) = pretty n
-  pretty (LoxCall _ obj params) = pretty obj <> "(" <> pretty params <> ")"
-  pretty (LoxGet _ obj name) = pretty obj <> "." <> pretty name
-  pretty (LoxUnary _ op expr) = pretty op <> pretty expr
-  pretty (LoxBinary _ op e1 e2) = pretty e1 <+> pretty op <+> pretty e2
-  pretty (LoxAssign _ name expr) = pretty name <+> "=" <+> pretty expr
-  pretty (LoxSet _ obj name expr) =
+  pretty (LoxString str _) = "\"" <> pretty str <> "\""
+  pretty (LoxNumber n _) = pretty n
+  pretty (LoxVar n _) = pretty n
+  pretty (LoxCall obj params _) = pretty obj <> "(" <> pretty params <> ")"
+  pretty (LoxGet obj name _) = pretty obj <> "." <> pretty name
+  pretty (LoxUnary op expr _) = pretty op <> pretty expr
+  pretty (LoxBinary op e1 e2 _) = pretty e1 <+> pretty op <+> pretty e2
+  pretty (LoxAssign name expr _) = pretty name <+> "=" <+> pretty expr
+  pretty (LoxSet obj name expr _) =
     pretty obj <> "." <> pretty name <+> "=" <+> pretty expr
-  pretty (LoxSuper _ m) = "super." <> pretty m
+  pretty (LoxSuper m _) = "super." <> pretty m
 
 data LoxUnaryOp
   = Exclamation

@@ -41,8 +41,8 @@ helloWorldProg :: LocatedLoxProgram
 helloWorldProg =
   LoxProgram
     [ PrintStmt
+        (LoxString "Hello, world!" (mkRange (1, 6) (1, 21)))
         (mkRange (1, 0) (1, 22))
-        (LoxString (mkRange (1, 6) (1, 21)) "Hello, world!")
     ]
   where
     mkRange (l1, c1) (l2, c2) = mkLocated (Position l1 c1) (Position l2 c2)

@@ -37,27 +37,27 @@ class HasLocated a where
   loc :: a -> Located
 
 instance HasLocated LocatedLoxStmt where
-  loc (VarStmt r _ _) = r
-  loc (FunctionStmt r _) = r
-  loc (ClassStmt r _ _ _) = r
-  loc (PrintStmt r _) = r
-  loc (ReturnStmt r _) = r
-  loc (IfStmt r _ _ _) = r
-  loc (WhileStmt r _ _) = r
-  loc (ExprStmt r _) = r
-  loc (BlockStmt r _) = r
+  loc (VarStmt _ _ r) = r
+  loc (FunctionStmt _ r) = r
+  loc (ClassStmt _ _ _ r) = r
+  loc (PrintStmt _ r) = r
+  loc (ReturnStmt _ r) = r
+  loc (IfStmt _ _ _ r) = r
+  loc (WhileStmt _ _ r) = r
+  loc (ExprStmt _ r) = r
+  loc (BlockStmt _ r) = r
 
 instance HasLocated LocatedLoxExpr where
-  loc (LoxString r _) = r
-  loc (LoxNumber r _) = r
-  loc (LoxVar r _) = r
-  loc (LoxCall r _ _) = r
-  loc (LoxGet r _ _) = r
-  loc (LoxUnary r _ _) = r
-  loc (LoxBinary r _ _ _) = r
-  loc (LoxAssign r _ _) = r
-  loc (LoxSet r _ _ _) = r
-  loc (LoxSuper r _) = r
+  loc (LoxString _ r) = r
+  loc (LoxNumber _ r) = r
+  loc (LoxVar _ r) = r
+  loc (LoxCall _ _ r) = r
+  loc (LoxGet _ _ r) = r
+  loc (LoxUnary _ _ r) = r
+  loc (LoxBinary _ _ _ r) = r
+  loc (LoxAssign _ _ r) = r
+  loc (LoxSet _ _ _ r) = r
+  loc (LoxSuper _ r) = r
 
 data SpanResult
   = ResLoxStmt LocatedLoxStmt
@@ -88,25 +88,25 @@ findSpanStmt
 findSpanStmt fs fe stmt =
   whenFs $
     case stmt of
-      VarStmt _ _ (Just expr) -> foldExpr' expr <|> def
-      VarStmt _ _ Nothing -> def
-      FunctionStmt _ fun -> foldFunction' fun <|> def
-      ClassStmt _ _ _ funcs ->
+      VarStmt _ (Just expr) _ -> foldExpr' expr <|> def
+      VarStmt _ Nothing _ -> def
+      FunctionStmt fun _ -> foldFunction' fun <|> def
+      ClassStmt _ _ funcs _ ->
         (Left <$> findMaybe (findSpanFunction fs) funcs) <|> def
-      PrintStmt _ expr -> foldExpr' expr <|> def
-      ReturnStmt _ (Just expr) -> foldExpr' expr <|> def
-      ReturnStmt _ Nothing -> def
-      IfStmt _ cond then' else' ->
+      PrintStmt expr _ -> foldExpr' expr <|> def
+      ReturnStmt (Just expr) _ -> foldExpr' expr <|> def
+      ReturnStmt Nothing _ -> def
+      IfStmt cond then' else' _ ->
         foldExpr' cond
           <|> findSpanStmt fs fe then'
           <|> (findSpanStmt fs fe =<< else')
           <|> def
-      WhileStmt _ cond body ->
+      WhileStmt cond body _ ->
         foldExpr' cond
           <|> findSpanStmt fs fe body
           <|> def
-      ExprStmt _ expr -> foldExpr' expr <|> def
-      BlockStmt _ stmts -> findMaybe (findSpanStmt fs fe) stmts <|> def
+      ExprStmt expr _ -> foldExpr' expr <|> def
+      BlockStmt stmts _ -> findMaybe (findSpanStmt fs fe) stmts <|> def
   where
     foldExpr' expr = fmap Right (findSpanExpr fe expr)
     foldFunction' fun = fmap Left (findSpanFunction fs fun)
@@ -130,12 +130,12 @@ findSpanExpr f expr =
       LoxString _ _ -> def
       LoxNumber _ _ -> def
       LoxVar _ _ -> def
-      LoxCall _ expr' params -> findSpanExpr f expr' <|> find f params <|> def
-      LoxGet _ obj _ -> findSpanExpr f obj <|> def
-      LoxUnary _ _ expr' -> findSpanExpr f expr' <|> def
-      LoxBinary _ _ e1 e2 -> findSpanExpr f e1 <|> findSpanExpr f e2 <|> def
-      LoxAssign _ _ val -> findSpanExpr f val <|> def
-      LoxSet _ obj _ val -> findSpanExpr f obj <|> findSpanExpr f val <|> def
+      LoxCall expr' params _ -> findSpanExpr f expr' <|> find f params <|> def
+      LoxGet obj _ _ -> findSpanExpr f obj <|> def
+      LoxUnary _ expr' _ -> findSpanExpr f expr' <|> def
+      LoxBinary _ e1 e2 _ -> findSpanExpr f e1 <|> findSpanExpr f e2 <|> def
+      LoxAssign _ val _ -> findSpanExpr f val <|> def
+      LoxSet obj _ val _ -> findSpanExpr f obj <|> findSpanExpr f val <|> def
       LoxSuper _ _ -> def
   where
     whenF c = if f expr then c else Nothing
