@@ -11,7 +11,7 @@ category: Development
 build-type: Simple
 extra-doc-files: CHANGELOG.md
 data-files:
-  test/data/*
+  test/data/*.lox
 
 common warnings
   ghc-options: -Wall
