@@ -10,9 +10,10 @@ permissions:
 jobs:
   build:
     strategy:
-      os:
-        - ubuntu-latest
-        - macos-latest
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
     steps:
     - uses: actions/checkout@v3
 
