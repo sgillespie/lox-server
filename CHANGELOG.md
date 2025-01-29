@@ -1,4 +1,4 @@
-# Revision history for obloxious
+# Revision history for lox-server
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

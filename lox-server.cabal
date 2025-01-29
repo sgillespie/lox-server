@@ -1,8 +1,8 @@
 cabal-version: 3.4
-name: obloxious
+name: lox-server
 version: 0.1.0.0
 synopsis: A language server implementation for the toy language lox
-homepage: https://github.com/sgillespie/obloxious
+homepage: https://github.com/sgillespie/lox-server
 license: BSD-3-Clause
 license-file: LICENSE
 author: Sean D Gillespie
@@ -53,29 +53,29 @@ library
   hs-source-dirs: src
   default-language: GHC2021
 
-executable obloxious
+executable lox-server
   import: warnings
   main-is: Main.hs
   build-depends:
-    obloxious
+    lox-server
 
   hs-source-dirs: app
   default-language: GHC2021
 
-test-suite obloxious-test
+test-suite lox-server-test
   import: warnings
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
     Development.Server.Parser.InternalSpec
     Development.Server.ParserSpec
-    Paths_obloxious
+    Paths_lox_server
   hs-source-dirs: test
   default-language: GHC2021
   build-tool-depends:
     sydtest-discover:sydtest-discover
   build-depends:
-    obloxious,
+    lox-server,
     hspec-megaparsec,
     hspec,
     megaparsec,

@@ -2,7 +2,7 @@ module Development.Server.ParserSpec (spec) where
 
 import Development.Lox.Server.Parser (parseLox, parseLoxFile, readLoxFile)
 import Development.Lox.Server.Types
-import Paths_obloxious (getDataFileName)
+import Paths_lox_server (getDataFileName)
 
 import Control.Exception (try)
 import Development.Lox.Server.Span (LocatedLoxProgram, Position (..), mkLocated)

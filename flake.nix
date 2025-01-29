@@ -37,7 +37,7 @@
 
       in
         pkgs.lib.recursiveUpdate flake {
-          packages.default = flake.packages."obloxious:exe:obloxious";
+          packages.default = flake.packages."lox-server:exe:lox-server";
         });
 
   nixConfig = {

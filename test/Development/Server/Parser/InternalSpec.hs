@@ -4,7 +4,7 @@ import Development.Lox.Server.Parser (readLoxFile)
 import Development.Lox.Server.Parser.Internal (expr, runParseProgram)
 import Development.Lox.Server.Span (Located, Position (..), UInt, mkLocated)
 import Development.Lox.Server.Types
-import Paths_obloxious (getDataFileName)
+import Paths_lox_server (getDataFileName)
 
 import Test.Hspec hiding (Spec)
 import Test.Hspec.Megaparsec (shouldParse, shouldSucceedOn)

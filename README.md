@@ -22,7 +22,7 @@ On emacs (eglot), you must add the Lox language server to `eglot-server-programs
 
     (with-eval-after-load 'eglot
       (add-to-list 'eglot-server-programs
-        '(fundamental-mode . ("obloxious"))))
+        '(fundamental-mode . ("lox-server"))))
 
 I have no idea how to do this in vim or Visual Studio Code. PRs welcome!
 
