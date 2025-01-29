@@ -19,17 +19,30 @@
           src = ./.;
           compiler-nix-name = "ghc96";
 
-          shell.tools = {
-            cabal = {};
-            cabal-gild = {};
-            fourmolu = {};
-            hlint = {};
-            haskell-language-server = {};
+          shell = {
+            tools = {
+              cabal = {};
+              cabal-gild = {};
+              fourmolu = {};
+              hlint = {};
+              haskell-language-server = {};
+            };
+
+            buildInputs = with pkgs; [
+              nixpkgs-fmt
+            ];
+
+            # No need to cross compile for development shell
+            crossPlatforms = _: [];
           };
 
-          shell.buildInputs = with pkgs; [
-            nixpkgs-fmt
-          ];
+          crossPlatforms = crossPkgs: with crossPkgs;
+            pkgs.lib.optionals (system == "x86_64-linux") [
+              musl64
+              aarch64-multiplatform-musl
+            ] ++ pkgs.lib.optionals (system == "x86_64-darwin") [
+              aarch64-darwin
+            ];
         };
 
 
@@ -37,7 +50,11 @@
 
       in
         pkgs.lib.recursiveUpdate flake {
-          packages.default = flake.packages."lox-server:exe:lox-server";
+          packages = {
+            default = flake.packages."lox-server:exe:lox-server";
+          };
+
+          legacyPkgs = pkgs;
         });
 
   nixConfig = {
