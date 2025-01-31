@@ -55,8 +55,9 @@ jobs:
     - name: Upload release artifacts
       uses: softprops/action-gh-release@v2
       if: ${{ github.event_name == 'release' }}
-      files: |
-        lox-server-linux-x86_64
-        lox-server-linux-aarch64
-        lox-server-windows-x86_64
-        lox-server-macos-aarch64
+      with:
+        files: |
+          lox-server-linux-x86_64
+          lox-server-linux-aarch64
+          lox-server-windows-x86_64
+          lox-server-macos-aarch64
