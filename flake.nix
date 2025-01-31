@@ -40,8 +40,11 @@
             pkgs.lib.optionals (system == "x86_64-linux") [
               musl64
               aarch64-multiplatform-musl
+              mingwW64
             ] ++ pkgs.lib.optionals (system == "x86_64-darwin") [
               aarch64-darwin
+            ] ++ pkgs.lib.optionals (system == "aarch64-darwin") [
+              x86_64-darwin
             ];
         };
 
