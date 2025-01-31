@@ -48,9 +48,14 @@ jobs:
         # Native build aarch64
         nix build -L .\#lox-server:exe:lox-server -o lox-server-macos-aarch64
 
-    - name: Run tests
+    - name: Run tests (Linux)
       run: |
-        nix flake check
+        nix build -L .\#checks.x86_64-linux.lox-server:test:lox-server-test
+
+    - name: Run tests (macOS)
+      run: |
+        nix build -L .\#checks.aarch64-darwin.lox-server:test:lox-server-test
+
 
     - name: Upload release artifacts
       uses: softprops/action-gh-release@v2
