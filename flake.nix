@@ -53,6 +53,58 @@
         pkgs.lib.recursiveUpdate flake {
           packages = {
             default = flake.packages."lox-server:exe:lox-server";
+            dist =
+              let
+                mkDist = pkg: platform:
+                  let
+                    env = { buildInputs = [ pkg pkgs.zip ]; };
+                    dist = "lox-server-${pkg.version}-${platform}";
+                    packageCmd =
+                      if pkgs.lib.hasPrefix "windows" platform then
+                        # Produce a zip file on windows
+                        ''zip -r "$out/${dist}.zip" .''
+                      else
+                        # Produce a tar archive on unix-likes
+                        ''tar czf "$out/${dist}.tar.gz" .'';
+                  in
+                    pkgs.runCommand
+                      "lox-server"
+                      env
+                      ''
+                        mkdir -p $out release
+                        cd release
+                        cp -r ${pkg}/bin/* .
+                        ${packageCmd}
+                      '';
+              in
+                pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+                  x86_64-linux =
+                    mkDist
+                      flake.packages."x86_64-unknown-linux-musl:lox-server:exe:lox-server"
+                      "linux-x86_64";
+                  aarch64-linux =
+                    mkDist
+                      flake.packages."aarch64-unknown-linux-musl:lox-server:exe:lox-server"
+                      "linux-aarch64";
+                  x86_64-windows =
+                    mkDist
+                      flake.packages."x86_64-w64-mingw32:lox-server:exe:lox-server"
+                      "windows-x86_64";
+                } // pkgs.lib.optionalAttrs (system == "aarch64-darwin") {
+                  aarch64-macos =
+                    mkDist
+                      flake.packages."lox-server:exe:lox-server"
+                      "macos-aarch64";
+                } // pkgs.lib.optionalAttrs (system == "x86_64-darwin") {
+                  x86_64-macos =
+                    mkDist
+                      flake.packages."lox-server:exe:lox-server"
+                      "macos-x86_64";
+                  aarch64-macos =
+                    mkDist
+                      flake.packages."aarch64-apple-darwin:lox-server:exe:lox-server"
+                      "macos-aarch64";
+                };
           };
 
           legacyPkgs = pkgs;

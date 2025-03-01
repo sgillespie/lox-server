@@ -36,17 +36,17 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         # Static build x86_64
-        nix build -L .\#x86_64-unknown-linux-musl:lox-server:exe:lox-server -o lox-server-linux-x86_64
+        nix build -L .\#dist.x86_64-linux -o linux-x86_64
         # Static cross build aarch64
-        nix build -L .\#aarch64-unknown-linux-musl:lox-server:exe:lox-server -o lox-server-linux-aarch64
+        nix build -L .\#dist.aarch64-linux -o linux-aarch64
         # Windows cross build
-        nix build -L .\#x86_64-w64-mingw32:lox-server:exe:lox-server -o lox-server-windows-x86_64
+        nix build -L .\#dist.x86_64-windows -o windows-x86_64
 
     - name: Build executables (macOS)
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         # Native build aarch64
-        nix build -L .\#lox-server:exe:lox-server -o lox-server-macos-aarch64
+        nix build -L .\#aarch64-macos -o aarch64-macos
 
     - name: Run tests (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -64,7 +64,7 @@ jobs:
       if: ${{ github.event_name == 'release' }}
       with:
         files: |
-          lox-server-linux-x86_64
-          lox-server-linux-aarch64
-          lox-server-windows-x86_64
-          lox-server-macos-aarch64
+          linux-x86_64/*.tar.gz
+          linux-aarch64/*.tar.gz
+          windows-x86_64/*.zip
+          macos-aarch64/*.tar.gz
