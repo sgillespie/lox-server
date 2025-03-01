@@ -46,7 +46,7 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         # Native build aarch64
-        nix build -L .\#aarch64-macos -o aarch64-macos
+        nix build -L .\#dist.aarch64-macos -o aarch64-macos
 
     - name: Run tests (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
