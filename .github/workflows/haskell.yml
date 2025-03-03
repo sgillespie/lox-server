@@ -15,7 +15,12 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
+
     runs-on: ${{ matrix.os }}
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.sha }}
+
     steps:
     - uses: actions/checkout@v3
 
@@ -46,7 +51,7 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         # Native build aarch64
-        nix build -L .\#dist.aarch64-macos -o aarch64-macos
+        nix build -L .\#dist.aarch64-macos -o macos-aarch64
 
     - name: Run tests (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
