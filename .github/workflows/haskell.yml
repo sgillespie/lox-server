@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.os }}-${{ github.sha }}
+      group: ${{ github.event_name }}-${{ github.workflow }}-${{ matrix.os }}-${{ github.sha }}
 
     steps:
     - uses: actions/checkout@v3
